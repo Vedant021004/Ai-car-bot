@@ -15,24 +15,28 @@ class NeuralNetwork {
   }
 
   static mutate(network, amount = 1) {
-    network.levels.forEach((element) => {
-      for (let i = 0; i < element.biases.length; i++) {
-        element.biases[i] = lerp(
-          element.biases[i],
+    network.levels.forEach((level) => {
+      for (let i = 0; i < level.biases.length; i++) {
+        level.biases[i] = lerp(
+          level.biases[i],
           Math.random() * 2 - 1,
           amount
         );
       }
-      for (let i = 0; i < element.weights.length; i++) {
-        for (let j = 0; j < element.weights[i].length; j++) {
-          element.weights[i][j] = lerp(
-            element.weights[i][j],
+      for (let i = 0; i < level.weights.length; i++) {
+        for (let j = 0; j < level.weights[i].length; j++) {
+          level.weights[i][j] = lerp(
+            level.weights[i][j],
             Math.random() * 2 - 1,
             amount
           );
         }
       }
     });
+  }
+
+  static clone(network) {
+    return JSON.parse(JSON.stringify(network));
   }
 }
 
@@ -68,11 +72,9 @@ class Level {
       for (let j = 0; j < level.inputs.length; j++) {
         sum += level.inputs[j] * level.weights[j][i];
       }
-      if (sum > level.biases[i]) {
-        level.outputs[i] = 1;
-      } else {
-        level.outputs[i] = 0;
-      }
+      // Step activation: produces clean binary controls that work well with
+      // mutation-only GA. (tanh would be better for backprop, but we're not.)
+      level.outputs[i] = sum > level.biases[i] ? 1 : 0;
     }
     return level.outputs;
   }

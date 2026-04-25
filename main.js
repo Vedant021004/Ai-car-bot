@@ -1,269 +1,241 @@
-const carCanvas = document.getElementById("carCanvas");
-carCanvas.width = 250;
-const networkCanvas = document.getElementById("networkCanvas");
-networkCanvas.width = 300;
-const carCtx = carCanvas.getContext("2d");
-const networkCtx = networkCanvas.getContext("2d");
-const road = new Road(carCanvas.width / 2, carCanvas.width * 0.9);
-const N = 1;
-doit();
-const cars = generateCars(N);
-const traffic = [
-  new Car(road.getLaneCenter(1), 500, 30, 50, "false", 2.5),
-  new Car(road.getLaneCenter(2), 100, 30, 50, "false", 3),
-  new Car(road.getLaneCenter(0), 200, 30, 50, "false", 4),
-  new Car(road.getLaneCenter(2), 200, 30, 50, "false", 3),
-  new Car(road.getLaneCenter(1), -500, 30, 50, "false", 3.5),
-  new Car(road.getLaneCenter(2), -100, 30, 50, "false", 3),
-  new Car(road.getLaneCenter(0), -400, 30, 50, "false", 4),
-  new Car(road.getLaneCenter(1), 100, 30, 50, "false", 4.5),
-  new Car(road.getLaneCenter(0), -1500, 30, 50, "false", 2.5),
-  new Car(road.getLaneCenter(1), -1100, 30, 50, "false", 3.5),
-  new Car(road.getLaneCenter(1), -1200, 30, 50, "false", 1.5),
-  new Car(road.getLaneCenter(1), -1200, 30, 50, "false", 2.5),
-  new Car(road.getLaneCenter(2), -1500, 30, 50, "false", 4),
-  new Car(road.getLaneCenter(2), -1100, 30, 50, "false", 3),
-  new Car(road.getLaneCenter(0), -1400, 30, 50, "false", 2),
-  new Car(road.getLaneCenter(1), 1100, 30, 50, "false", 1),
-  new Car(road.getLaneCenter(1), 500, 30, 50, "false", 2.5),
-  new Car(road.getLaneCenter(2), 100, 30, 50, "false", 3),
-  new Car(road.getLaneCenter(0), 200, 30, 50, "false", 4),
-  new Car(road.getLaneCenter(1), 100, 30, 50, "false", 4.5),
-  new Car(road.getLaneCenter(0), -1500, 30, 50, "false", 2.8),
-  new Car(road.getLaneCenter(1), -1100, 30, 50, "false", 3.4),
-  new Car(road.getLaneCenter(1), -1200, 30, 50, "false", 1.2),
-  new Car(road.getLaneCenter(1), -1200, 30, 50, "false", 2.0),
-  new Car(road.getLaneCenter(2), -1500, 30, 50, "false", 2.4),
-  new Car(road.getLaneCenter(2), -1100, 30, 50, "false", 4),
-  new Car(road.getLaneCenter(0), -1400, 30, 50, "false", 4.5),
-  new Car(road.getLaneCenter(1), 1100, 30, 50, "false", 1.2),
-  new Car(road.getLaneCenter(1), 500, 30, 50, "false", 2),
-  new Car(road.getLaneCenter(2), 100, 30, 50, "false", 0.6),
-  new Car(road.getLaneCenter(0), 200, 30, 50, "false", 3.6),
-  new Car(road.getLaneCenter(2), 200, 30, 50, "false", 1.7),
-  new Car(road.getLaneCenter(1), -5500, 30, 50, "false", 1.5),
-  new Car(road.getLaneCenter(2), -5100, 30, 50, "false", 2),
-  new Car(road.getLaneCenter(0), -5400, 30, 50, "false", 3),
-  new Car(road.getLaneCenter(1), -5100, 30, 50, "false", 1.5),
-  new Car(road.getLaneCenter(1), 1100, 30, 50, "false", 1),
-  new Car(road.getLaneCenter(1), 500, 30, 50, "false", 2.5),
-  new Car(road.getLaneCenter(2), 100, 30, 50, "false", 3),
-  new Car(road.getLaneCenter(0), 200, 30, 50, "false", 4),
-  new Car(road.getLaneCenter(2), 200, 30, 50, "false", 3),
-  new Car(road.getLaneCenter(1), -5500, 30, 50, "false", 3.5),
-  new Car(road.getLaneCenter(2), -7100, 30, 50, "false", 3),
-  new Car(road.getLaneCenter(0), -7400, 30, 50, "false", 2.8),
-  new Car(road.getLaneCenter(1), -7100, 30, 50, "false", 1.5),
-  new Car(road.getLaneCenter(0), -11500, 30, 50, "false", 2.5),
-  new Car(road.getLaneCenter(2), 200, 30, 50, "false", 3),
-  new Car(road.getLaneCenter(1), -5500, 30, 50, "false", 3.5),
-  new Car(road.getLaneCenter(2), -5100, 30, 50, "false", 3),
-  new Car(road.getLaneCenter(0), -5400, 30, 50, "false", 4),
-  new Car(road.getLaneCenter(1), -5100, 30, 50, "false", 1.5),
-  new Car(road.getLaneCenter(1), 1100, 30, 50, "false", 1),
-  new Car(road.getLaneCenter(1), 500, 30, 50, "false", 2.5),
-  new Car(road.getLaneCenter(2), 100, 30, 50, "false", 3),
-  new Car(road.getLaneCenter(0), 200, 30, 50, "false", 4),
-  new Car(road.getLaneCenter(2), 200, 30, 50, "false", 3),
-  new Car(road.getLaneCenter(1), -5500, 30, 50, "false", 3.5),
-  new Car(road.getLaneCenter(2), -7100, 30, 50, "false", 3),
-  new Car(road.getLaneCenter(0), -7400, 30, 50, "false", 2.8),
-  new Car(road.getLaneCenter(1), -7100, 30, 50, "false", 1.5),
-  new Car(road.getLaneCenter(0), -7500, 30, 50, "false", 2.5),
-  new Car(road.getLaneCenter(1), -7100, 30, 50, "false", 3.5),
-  new Car(road.getLaneCenter(2), -4200, 30, 50, "false", 1.5),
-  new Car(road.getLaneCenter(0), -4200, 30, 50, "false", 2.5),
-  new Car(road.getLaneCenter(1), -4500, 30, 50, "false", 3.25),
-  new Car(road.getLaneCenter(2), -4100, 30, 50, "false", 3),
-  new Car(road.getLaneCenter(0), -4400, 30, 50, "false", 2),
-  new Car(road.getLaneCenter(1), -4100, 30, 50, "false", 1),
-  new Car(road.getLaneCenter(2), 200, 30, 50, "false", 3),
-  new Car(road.getLaneCenter(1), -5500, 30, 50, "false", 3.5),
-  new Car(road.getLaneCenter(2), -7100, 30, 50, "false", 3),
-  new Car(road.getLaneCenter(0), -7400, 30, 50, "false", 2.8),
-  new Car(road.getLaneCenter(1), -7100, 30, 50, "false", 1.5),
-  new Car(road.getLaneCenter(0), -11500, 30, 50, "false", 2.5),
-  new Car(road.getLaneCenter(2), 9000, 30, 50, "false", 3),
-  new Car(road.getLaneCenter(1), -3500, 30, 50, "false", 3.5),
-  new Car(road.getLaneCenter(2), -3100, 30, 50, "false", 3),
-  new Car(road.getLaneCenter(0), -3400, 30, 50, "false", 4),
-  new Car(road.getLaneCenter(1), -3100, 30, 50, "false", 1.5),
-  new Car(road.getLaneCenter(1), 3100, 30, 50, "false", 1),
-  new Car(road.getLaneCenter(1), 3700, 30, 50, "false", 2.5),
-  new Car(road.getLaneCenter(2), 3700, 30, 50, "false", 3),
-  new Car(road.getLaneCenter(0), 3700, 30, 50, "false", 4),
-  new Car(road.getLaneCenter(2), 3700, 30, 50, "false", 3),
-  new Car(road.getLaneCenter(1), -3500, 30, 50, "false", 3.5),
-  new Car(road.getLaneCenter(0), -8400, 30, 50, "false", 2.8),
-  new Car(road.getLaneCenter(1), -8100, 30, 50, "false", 1.5),
-  new Car(road.getLaneCenter(0), -8500, 30, 50, "false", 2.5),
-  new Car(road.getLaneCenter(2), -2100, 30, 50, "false", 3),
-  new Car(road.getLaneCenter(1), -2100, 30, 50, "false", 3.5),
-  new Car(road.getLaneCenter(2), -2200, 30, 50, "false", 1.5),
-  new Car(road.getLaneCenter(0), -2400, 30, 50, "false", 2.8),
-  new Car(road.getLaneCenter(1), -2100, 30, 50, "false", 1.5),
-  new Car(road.getLaneCenter(0), -2500, 30, 50, "false", 2.5),
-  new Car(road.getLaneCenter(2), -2100, 30, 50, "false", 3),
-  new Car(road.getLaneCenter(1), -4100, 30, 50, "false", 3.5),
-  new Car(road.getLaneCenter(2), -4200, 30, 50, "false", 1.5),
-  new Car(road.getLaneCenter(0), -4400, 30, 50, "false", 2.8),
-  new Car(road.getLaneCenter(1), -4100, 30, 50, "false", 1.5),
-  new Car(road.getLaneCenter(0), -4500, 30, 50, "false", 2.5),
-  new Car(road.getLaneCenter(2), -4100, 30, 50, "false", 3),
-  new Car(road.getLaneCenter(1), -4100, 30, 50, "false", 3.5),
-  new Car(road.getLaneCenter(2), -4200, 30, 50, "false", 1.5),
-  new Car(road.getLaneCenter(1), 3100, 30, 50, "false", 1),
-  new Car(road.getLaneCenter(1), 3700, 30, 50, "false", 2.5),
-  new Car(road.getLaneCenter(2), 3700, 30, 50, "false", 3),
-  new Car(road.getLaneCenter(0), 3700, 30, 50, "false", 4),
-  new Car(road.getLaneCenter(2), 3700, 30, 50, "false", 3),
-  new Car(road.getLaneCenter(1), -3500, 30, 50, "false", 3.5),
-  new Car(road.getLaneCenter(0), -8400, 30, 50, "false", 2.8),
-  new Car(road.getLaneCenter(1), -8100, 30, 50, "false", 1.5),
-  new Car(road.getLaneCenter(0), -8500, 30, 50, "false", 2.5),
-  new Car(road.getLaneCenter(2), -2100, 30, 50, "false", 3),
-  new Car(road.getLaneCenter(1), -2100, 30, 50, "false", 3.5),
-  new Car(road.getLaneCenter(2), -2200, 30, 50, "false", 1.5),
-  new Car(road.getLaneCenter(0), -2400, 30, 50, "false", 2.8),
-  new Car(road.getLaneCenter(1), -2100, 30, 50, "false", 1.5),
-  new Car(road.getLaneCenter(0), -2500, 30, 50, "false", 2.5),
-  new Car(road.getLaneCenter(2), -2100, 30, 50, "false", 3),
-  new Car(road.getLaneCenter(1), -4100, 30, 50, "false", 3.5),
-  new Car(road.getLaneCenter(2), -4200, 30, 50, "false", 1.5),
-  new Car(road.getLaneCenter(0), -4400, 30, 50, "false", 2.8),
-  new Car(road.getLaneCenter(1), -4100, 30, 50, "false", 1.5),
-  new Car(road.getLaneCenter(0), -4500, 30, 50, "false", 2.5),
-];
+(() => {
+  const carCanvas = document.getElementById("carCanvas");
+  const networkCanvas = document.getElementById("networkCanvas");
+  const chartCanvas = document.getElementById("chartCanvas");
+  const carCtx = carCanvas.getContext("2d");
+  const networkCtx = networkCanvas.getContext("2d");
 
-let bestCar = cars[0];
-if (localStorage.getItem("bestBrain")) {
-  for (let i = 0; i < cars.length; i++) {
-    cars[i].brain = JSON.parse(localStorage.getItem("bestBrain"));
-    if (i != 0) {
-      NeuralNetwork.mutate(cars[i].brain, 0.0);
+  const road = new Road(0, 220, 3); // x=0 — we'll translate to canvas center on draw
+  const simulation = new Simulation(road, {
+    population: 100,
+    mutationAmount: 0.18,
+    rayCount: 5,
+    rayLength: 180,
+    maxSpeed: 5,
+  });
+  const chart = new FitnessChart(chartCanvas);
+
+  const app = {
+    simulation,
+    chart,
+    paused: false,
+    speedMultiplier: 1,
+    manualMode: false,
+    manualCar: null,
+    cameraY: 0,
+    fps: 60,
+    _frames: 0,
+    _lastFpsTime: performance.now(),
+    spawnManualCar(showToast = true) {
+      const spawnY = simulation.bestCar?.y ?? simulation.startY;
+      // Force-clear ALL traffic across ALL lanes within ±200px of spawn so the
+      // car can never spawn into an obstacle.
+      simulation.traffic = simulation.traffic.filter(
+        (t) => Math.abs(t.y - spawnY) > 200
+      );
+      this.manualCar = new Car(
+        road.getLaneCenter(1),
+        spawnY,
+        30,
+        50,
+        ControlMode.KEYS,
+        5,
+        {
+          rayCount: simulation.options.rayCount,
+          rayLength: simulation.options.rayLength,
+        }
+      );
+      // 60-frame invulnerability so a near-miss spawn can't insta-kill us.
+      this.manualCar._spawnGrace = 60;
+      if (showToast) ui.toast("Manual mode 🎮 — arrows / WASD / D-pad");
+    },
+    toggleManualMode() {
+      this.manualMode = !this.manualMode;
+      if (this.manualMode) {
+        this.spawnManualCar(true);
+        document.body.classList.add("manual-mode");
+      } else {
+        this.manualCar = null;
+        document.body.classList.remove("manual-mode");
+        ui.toast("AI mode resumed 🤖");
+      }
+    },
+  };
+
+  const ui = new UI(app);
+
+  // ---------- Canvas sizing (Retina-aware) ----------
+  function resizeCanvases() {
+    const dpr = window.devicePixelRatio || 1;
+    const carCssWidth = carCanvas.clientWidth;
+    const carCssHeight = carCanvas.clientHeight;
+    carCanvas.width = carCssWidth * dpr;
+    carCanvas.height = carCssHeight * dpr;
+    carCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    const netCssWidth = networkCanvas.clientWidth;
+    const netCssHeight = networkCanvas.clientHeight;
+    networkCanvas.width = netCssWidth * dpr;
+    networkCanvas.height = netCssHeight * dpr;
+    networkCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    chart.resize(chartCanvas.clientWidth, chartCanvas.clientHeight, dpr);
+  }
+
+  if (typeof ResizeObserver !== "undefined") {
+    const ro = new ResizeObserver(resizeCanvases);
+    ro.observe(carCanvas);
+    ro.observe(networkCanvas);
+    ro.observe(chartCanvas);
+  } else {
+    window.addEventListener("resize", resizeCanvases);
+  }
+  // Run once after layout settles
+  requestAnimationFrame(resizeCanvases);
+
+  // ---------- Animation loop ----------
+  function animate(time) {
+    // FPS counter
+    app._frames++;
+    const now = performance.now();
+    if (now - app._lastFpsTime >= 500) {
+      app.fps = (app._frames * 1000) / (now - app._lastFpsTime);
+      app._frames = 0;
+      app._lastFpsTime = now;
     }
-  }
-}
 
-animate();
-function save() {
-  localStorage.setItem("bestBrain", JSON.stringify(bestCar.brain));
-}
-function doit() {
-  localStorage.setItem(
-    "bestBrain",
-    JSON.stringify({
-      levels: [
-        {
-          inputs: [0, 0, 0, 0.22496138371532337, 0.5632697435022819],
-          outputs: [1, 1, 1, 0, 1, 1],
-          biases: [
-            -0.04362436546783136, 0.048158498302552484, -0.2301512774826388,
-            -0.01289811976079236, -0.26047566883363993, -0.2226075795914357,
-          ],
-          weights: [
-            [
-              -0.1418100665832073, -0.027545260071664177, 0.3208216560402711,
-              -0.11746834848780037, -0.16244482684810388, 0.09980516303597872,
-            ],
-            [
-              -0.14397667288677143, 0.016828599115257706, 0.1240294402912276,
-              -0.17269957926937154, 0.3829421116758293, 0.24415911283481137,
-            ],
-            [
-              0.00517464417761648, 0.05094371657724989, -0.44140610372183037,
-              -0.03722208960293835, -0.12302015808387695, -0.2828982700080463,
-            ],
-            [
-              0.21357013771187555, 0.28708866575758246, 0.08799693230405906,
-              0.1287310714717016, -0.023200173114644188, -0.0247185864579747,
-            ],
-            [
-              -0.01585657825410492, 0.0006698004580910077, -0.13498886525906875,
-              -0.16724205909835882, 0.09624201292212271, -0.2391706813952152,
-            ],
-          ],
-        },
-        {
-          inputs: [1, 1, 1, 0, 1, 1],
-          outputs: [1, 1, 0, 0],
-          biases: [
-            -0.020002071864622675, 0.1906359195935595, -0.20226021249012488,
-            0.0613552780746,
-          ],
-          weights: [
-            [
-              -0.11324951058627687, 0.05790621654452307, 0.014852559019618593,
-              -0.14661454830361303,
-            ],
-            [
-              0.09385213792060003, 0.46220267878623167, -0.3679339356574563,
-              0.01740907766813897,
-            ],
-            [
-              0.13596033977345837, 0.058242144697781266, 0.04175469227385355,
-              -0.09587425947568118,
-            ],
-            [
-              0.1116847018960335, -0.20459909683191174, -0.13899752613042,
-              0.03287622035091801,
-            ],
-            [
-              0.002050366293459366, -0.2315265814183274, 0.010112448677615442,
-              0.18800495496390007,
-            ],
-            [
-              0.21726539202163556, 0.13367122723639727, -0.06953954232709646,
-              -0.20803284931419078,
-            ],
-          ],
-        },
-      ],
-    })
-  );
-}
-doit();
+    if (!app.paused) {
+      // Speed multiplier: run N physics ticks per render
+      for (let s = 0; s < app.speedMultiplier; s++) {
+        if (app.manualMode && app.manualCar) {
+          const mc = app.manualCar;
+          const wasDamaged = mc.damaged;
+          mc.update(road.borders, simulation.traffic);
+          // Spawn-grace invulnerability: undamaged for the first N frames
+          if (mc._spawnGrace > 0) {
+            mc.damaged = false;
+            mc._spawnGrace--;
+          }
+          // Auto-respawn on crash so manual mode is forgiving
+          if (!wasDamaged && mc.damaged) {
+            simulation.particles.burst(mc.x, mc.y, 14, "#ff7676");
+            setTimeout(() => {
+              if (app.manualMode) app.spawnManualCar(false);
+            }, 600);
+          }
+        } else {
+          simulation.step();
+        }
+      }
+    }
 
-function discard() {
-  localStorage.removeItem("bestBrain");
-}
-doit();
+    // Auto-advance generation when all cars dead
+    if (
+      !app.paused &&
+      !app.manualMode &&
+      simulation.cars.length > 0 &&
+      simulation.isBatchDone()
+    ) {
+      chart.push(simulation.bestCar.fitness, computeAvg(simulation.cars));
+      simulation.nextGeneration();
+      ui.toast(
+        `Gen ${simulation.generation} → mut ${simulation.adaptiveMutation.toFixed(2)}`
+      );
+    }
 
-function generateCars(N) {
-  const cars = [];
-  for (let i = 0; i < N; i++) {
-    cars.push(new Car(road.getLaneCenter(1), 600, 30, 50, "AI", 10));
-  }
-  return cars;
-}
-doit();
-function animate(time) {
-  for (let i = 0; i < traffic.length; i++) {
-    traffic[i].update(road.borders, []);
-  }
-  for (let i = 0; i < cars.length; i++) {
-    cars[i].update(road.borders, traffic);
-  }
-  bestCar = cars.find((c) => c.y == Math.min(...cars.map((c) => c.y)));
+    // ---------- Draw car canvas ----------
+    const w = carCanvas.clientWidth;
+    const h = carCanvas.clientHeight;
+    const bgColor = readCssVar("--road", "#404040");
+    carCtx.fillStyle = bgColor;
+    carCtx.fillRect(0, 0, w, h);
 
-  carCanvas.height = window.innerHeight;
-  networkCanvas.height = window.innerHeight;
+    // Camera target — keep last manual y during the brief crash→respawn window
+    // so the camera doesn't jump to the AI best car and back.
+    let camY;
+    if (app.manualMode) {
+      if (app.manualCar) {
+        app._lastManualY = app.manualCar.y;
+        camY = app.manualCar.y;
+      } else {
+        camY = app._lastManualY ?? simulation.startY;
+      }
+    } else {
+      camY = simulation.bestCar?.y ?? simulation.startY;
+    }
+    const cameraTarget = -camY + h * 0.7;
+    app.cameraY = lerp(app.cameraY, cameraTarget, 0.12);
 
-  carCtx.save();
-  carCtx.translate(0, -bestCar.y + carCanvas.height * 0.7);
+    carCtx.save();
+    carCtx.translate(w / 2, app.cameraY);
 
-  road.draw(carCtx);
-  for (let i = 0; i < traffic.length; i++) {
-    traffic[i].draw(carCtx, "red");
+    road.draw(carCtx);
+
+    for (const t of simulation.traffic) {
+      // Cull off-screen traffic for cheap perf win
+      if (Math.abs(t.y - camY) > h + 200) continue;
+      t.draw(carCtx, readCssVar("--car-traffic", "#d62828"));
+    }
+
+    // Trails behind AI cars (only the ones near the camera)
+    const nearAlive = simulation.cars.filter(
+      (c) => !c.damaged && Math.abs(c.y - camY) < h
+    );
+    simulation.particles.drawTrails(carCtx, nearAlive);
+
+    // AI population (faded)
+    if (!app.manualMode && simulation.bestCar) {
+      carCtx.globalAlpha = 0.22;
+      for (const c of simulation.cars) {
+        if (c === simulation.bestCar) continue;
+        if (Math.abs(c.y - simulation.bestCar.y) > h + 200) continue;
+        c.draw(carCtx, readCssVar("--car-ai", "#3a86ff"));
+      }
+      carCtx.globalAlpha = 1;
+      simulation.bestCar.draw(
+        carCtx,
+        readCssVar("--car-best", "#3a86ff"),
+        true
+      );
+    } else if (app.manualCar) {
+      app.manualCar.draw(carCtx, readCssVar("--car-best", "#3a86ff"), true);
+    }
+
+    simulation.particles.draw(carCtx);
+    carCtx.restore();
+
+    // ---------- Network visualizer ----------
+    const netW = networkCanvas.clientWidth;
+    const netH = networkCanvas.clientHeight;
+    networkCtx.clearRect(0, 0, netW, netH);
+    const visualizedBrain = app.manualMode
+      ? app.manualCar?.brain
+      : simulation.bestCar?.brain;
+    if (visualizedBrain) {
+      networkCtx.lineDashOffset = -((time || 0) / 50);
+      Visualizer.drawNetwork(networkCtx, visualizedBrain);
+    }
+
+    // ---------- Chart ----------
+    chart.draw();
+
+    // ---------- HUD ----------
+    ui.updateHUD(simulation.getStats(), app.fps);
+
+    requestAnimationFrame(animate);
   }
-  carCtx.globalAlpha = 0.2;
-  for (let i = 0; i < cars.length; i++) {
-    cars[i].draw(carCtx, "blue");
+
+  function computeAvg(cars) {
+    if (cars.length === 0) return 0;
+    let s = 0;
+    for (const c of cars) s += c.fitness;
+    return s / cars.length;
   }
-  carCtx.globalAlpha = 1;
-  bestCar.draw(carCtx, "blue", true);
-  carCtx.restore();
-  networkCtx.lineDashOffset = -time / 50;
-  Visualizer.drawNetwork(networkCtx, bestCar.brain);
+
+  // Hook: every time bestFitness improves vs the previous gen we push to chart.
+  // We only push at generation boundary (handled above), but also seed point 0
+  // so the chart draws something earlier.
+  chart.push(0, 0);
+
   requestAnimationFrame(animate);
-}
+})();
