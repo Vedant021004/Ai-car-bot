@@ -1,37 +1,45 @@
-# 🚗 Self-Driving Car AI — Vanilla JS
+# 🚗 Self-Driving Car AI - Vanilla JS
 
-> A neural-network self-driving car simulation trained with a **genetic algorithm** — written in pure vanilla JavaScript. **No libraries, no build step, no dependencies.** Just open `index.html`.
+> A neural-network self-driving car simulation trained with a **genetic algorithm** - written in pure vanilla JavaScript. **No libraries, no build step, no dependencies.** Just open `index.html`.
+
+### 👉 [**Try the live demo →**](https://car-ai.halemogpa.com)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](#license)
 [![Vanilla JS](https://img.shields.io/badge/vanilla-JS-yellow)](#)
 [![No dependencies](https://img.shields.io/badge/dependencies-0-brightgreen)](#)
-[![Deployed on Vercel](https://img.shields.io/badge/deploy-Vercel-black)](#deploy)
+[![Live demo](https://img.shields.io/badge/demo-car--ai.halemogpa.com-3a86ff)](https://car-ai.halemogpa.com)
+
+| Dark | Light |
+| :---: | :---: |
+| ![Dark theme](screenshot-dark.png) | ![Light theme](screenshot-light.png) |
 
 ---
 
 ## ✨ Highlights
 
-- 🧠 **Hand-rolled neural network** with a `tanh`-activated multi-layer perceptron
-- 🧬 **Genetic algorithm** with elitism + adaptive mutation rate
+- 🧠 **Hand-rolled neural network** - input layer (5 sensor rays) → 6 hidden neurons → 4 outputs (up / left / right / down). Step-activated, mutation-only training.
+- 🧬 **Genetic algorithm** with elitism + adaptive mutation rate that auto-increases when training plateaus
 - 📊 **Live fitness chart** plotting best vs average fitness across generations
-- 📡 **Sensor visualization** — see exactly what each ray detects in real time
-- 🎛️ **Live control panel** — tune population, mutation, sensor rays, ray length, and sim speed without reloading
+- 📡 **Sensor visualization** - see exactly what each ray detects in real time
+- 🎛️ **Live control panel** - tune population, mutation, sensor rays, ray length, and sim speed without reloading
 - ⏩ **Speed multiplier** (1× / 2× / 5× / 10×) for fast-forward training
-- 🎮 **Manual driving mode** — drive yourself with arrows/WASD or the on-screen D-pad
-- 📱 **Mobile-ready** — responsive layout, touch D-pad, pinch-friendly canvas
+- 🎮 **Manual driving mode** with spawn invulnerability and auto-respawn on crash
+- 📱 **Mobile-ready** - responsive layout, on-screen touch D-pad
 - 💾 **Save / load brains** to localStorage *and* to/from JSON files (drag-and-drop supported)
 - 🌗 **Light + dark theme** with system-preference detection
-- ✨ **Visual polish** — smooth camera follow, tire trails, crash particle bursts, animated network weights
-- 📈 **HUD overlay** — FPS, generation, alive count, best/all-time fitness, distance, speed, current mutation
+- ✨ **Visual polish** - smooth camera follow, tire trails, crash particle bursts, animated network weights with thickness ∝ |w|
+- 📈 **HUD overlay** - FPS, generation, alive count, best/all-time fitness, distance, speed, current mutation
 - 🎹 **Hotkeys** for everything
 
 ---
 
 ## 🚀 Live demo
 
-> Replace this link after deploying to Vercel: `https://<your-deployment>.vercel.app`
+**👉 [car-ai.halemogpa.com](https://car-ai.halemogpa.com)**
 
-A one-click deploy button is at the bottom of this README.
+Open it on a phone or desktop - the layout adapts. The simulation auto-runs with whichever brain has been saved, and you can toggle 🎮 Manual to drive yourself.
+
+A pre-trained champion brain is committed at [`champion-brain.json`](./champion-brain.json) - drop it onto the page (or click ⬇ Import) to load a driver that survived 325k pixels (about 6,500 car-lengths) without crashing.
 
 ---
 
@@ -43,15 +51,15 @@ Each car has a fixed-topology neural network: **N sensor rays → 6 hidden neuro
 ### The genetic algorithm
 - A population of N (default **100**) cars all start in lane center with brains derived from the all-time best.
 - **Car 0** keeps the champion brain unmutated (**elitism**).
-- All other cars get mutated copies — `weight = lerp(weight, random(-1,1), mutationRate)`.
+- All other cars get mutated copies - `weight = lerp(weight, random(-1,1), mutationRate)`.
 - A generation ends when **every car crashes** (or you hit ⏭ Skip gen).
 - The car with the highest **fitness** (`distance + topSpeed × 5 − crashPenalty`) becomes the new champion.
 - If best fitness fails to improve for 3 generations, mutation rate **automatically increases** to escape the plateau.
 
 ### What's drawn
-- **Driving canvas** — road, traffic, the ghost-faded population, the highlighted best car with its sensors, tire trails, and crash particles.
-- **Network canvas** — the best car's brain. Connection thickness is proportional to weight magnitude, color shows sign, node radius pulses with activation, and the bias rings show each neuron's threshold.
-- **Fitness chart** — best (green) and average (faint white) fitness per generation.
+- **Driving canvas** - road, traffic, the ghost-faded population, the highlighted best car with its sensors, tire trails, and crash particles.
+- **Network canvas** - the best car's brain. Connection thickness is proportional to weight magnitude, color shows sign, node radius pulses with activation, and the bias rings show each neuron's threshold.
+- **Fitness chart** - best (green) and average (faint white) fitness per generation.
 
 ---
 
@@ -77,7 +85,7 @@ You can also use the sidebar buttons, drag-and-drop a `brain*.json` anywhere on 
 
 ## 🛠️ Run locally
 
-The project is **pure static** — no build step, no install. Pick whichever you prefer:
+The project is **pure static** - no build step, no install. Pick whichever you prefer:
 
 ```sh
 # 1) Just open it
@@ -105,7 +113,7 @@ python3 -m http.server # then visit http://localhost:8000
 ├── chart.js          # Mini fitness line chart
 ├── particles.js      # Tire trails + crash explosion bursts
 ├── storage.js        # Safe localStorage + JSON brain export/import
-├── network.js        # NeuralNetwork + Level (tanh activation, mutate, clone)
+├── network.js        # NeuralNetwork + Level (step activation, mutate, clone)
 ├── visualizer.js     # Network visualizer with pulsing nodes
 ├── car.js            # Car (physics, fitness, distance, polygon, draw)
 ├── controls.js       # Keyboard + on-screen D-pad inputs
@@ -116,7 +124,9 @@ python3 -m http.server # then visit http://localhost:8000
 └── README.md
 ```
 
-About **~1100 lines of hand-written code**, zero runtime dependencies.
+About **~2300 lines of hand-written code**, zero runtime dependencies.
+
+A pre-trained brain is included as [`champion-brain.json`](./champion-brain.json).
 
 ---
 
@@ -143,19 +153,19 @@ Settings → Pages → Source: `main`, Folder: `/ (root)`. Done.
 
 ### Any static host
 
-Drop the folder into Netlify drop, Cloudflare Pages, S3, or even an `nginx` `root` — there's nothing to build.
+Drop the folder into Netlify drop, Cloudflare Pages, S3, or even an `nginx` `root` - there's nothing to build.
 
 ---
 
 ## 🔬 Tech notes
 
 - **No libraries.** Not even a polyfill. Modern browsers only.
-- **Retina-aware** — every canvas is scaled by `devicePixelRatio` so it stays crisp on Retina/Hi-DPI displays.
+- **Retina-aware** - every canvas is scaled by `devicePixelRatio` so it stays crisp on Retina/Hi-DPI displays.
 - **`ResizeObserver`** keeps canvas dimensions in sync with CSS layout without rAF-side effects.
-- **Storage is wrapped** with try/catch — runs cleanly in private mode / when storage is disabled.
-- **Procedural traffic** — instead of a hardcoded list of hundreds of off-screen cars, traffic is procedurally generated as the leader advances and recycled when it falls far behind.
-- **Adaptive mutation** — automatically explores more aggressively when training plateaus, then settles back when a new best is found.
-- **Fitness function** rewards forward progress *and* sustained top speed but penalizes crashes — preventing the classic reward-hack of "drive fast straight into a wall."
+- **Storage is wrapped** with try/catch - runs cleanly in private mode / when storage is disabled.
+- **Procedural traffic** - instead of a hardcoded list of hundreds of off-screen cars, traffic is procedurally generated as the leader advances and recycled when it falls far behind.
+- **Adaptive mutation** - automatically explores more aggressively when training plateaus, then settles back when a new best is found.
+- **Fitness function** rewards forward progress *and* sustained top speed but penalizes crashes - preventing the classic reward-hack of "drive fast straight into a wall."
 
 ---
 
@@ -168,4 +178,4 @@ This rebuild adds the genetic-algorithm training loop, live UI, polish, and depl
 
 ## 📜 License
 
-MIT — see [LICENSE](LICENSE) or use freely with attribution. Pull requests welcome.
+MIT - see [LICENSE](LICENSE) or use freely with attribution. Pull requests welcome.
