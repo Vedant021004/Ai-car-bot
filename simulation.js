@@ -7,6 +7,36 @@ const SIM_KEY_BRAIN_VERSION = "selfDrivingCar.brainVersion";
 // in a way that makes old saved brains incompatible / dead.
 const CURRENT_BRAIN_VERSION = 2;
 
+const DEFAULT_CHAMPION_BRAIN = {
+  levels: [
+    {
+      inputs: [0, 0, 0, 0, 0],
+      outputs: [0, 0, 0, 0, 0, 0],
+      biases: [-0.15, 0.25, 0.25, 0.35, 0.35, 0.65],
+      weights: [
+        [-0.5, 0.9, -0.8, -0.7, 0.2, 0.2],
+        [-0.8, 1.2, -0.9, -0.9, 0.3, 0.5],
+        [-1.2, -0.3, -0.3, 0.8, 0.8, 1.1],
+        [-0.8, -0.9, 1.2, 0.3, -0.9, 0.5],
+        [-0.5, -0.8, 0.9, 0.2, -0.7, 0.2],
+      ],
+    },
+    {
+      inputs: [0, 0, 0, 0, 0, 0],
+      outputs: [1, 0, 0, 0],
+      biases: [-0.05, 0.45, 0.45, 0.55],
+      weights: [
+        [1.2, -0.6, -0.6, -0.8],
+        [-0.2, -0.9, 1.4, -0.1],
+        [-0.2, 1.4, -0.9, -0.1],
+        [-0.3, -0.9, 1.3, 0.2],
+        [-0.3, 1.3, -0.9, 0.2],
+        [-1.4, 0, 0, 1.2],
+      ],
+    },
+  ],
+};
+
 class Simulation {
   constructor(road, options = {}) {
     this.road = road;
@@ -69,7 +99,7 @@ class Simulation {
 
     this.generation = Storage.get(SIM_KEY_GENERATION, 0) || 0;
     this.allTimeBestFitness = Storage.get(SIM_KEY_BEST_FITNESS, 0) || 0;
-    this.bestEverBrain = Storage.get(SIM_KEY_BRAIN, null);
+    this.bestEverBrain = Storage.get(SIM_KEY_BRAIN, null) || NeuralNetwork.clone(DEFAULT_CHAMPION_BRAIN);
     this._zeroFitnessGens = 0;
     this.bestFitnessThisGen = 0;
     this.avgFitnessThisGen = 0;

@@ -172,8 +172,15 @@ class Car {
 
     if (this.speed !== 0) {
       const flip = this.speed > 0 ? 1 : -1;
-      if (this.controls.left) this.angle += 0.03 * flip;
-      if (this.controls.right) this.angle -= 0.03 * flip;
+      if (this.controls.left) this.angle += 0.035 * flip;
+      if (this.controls.right) this.angle -= 0.035 * flip;
+
+      // Natural caster self-aligning torque: vehicle straightens out when not actively steering
+      if (!this.controls.left && !this.controls.right) {
+        this.angle *= 0.93;
+      }
+      // Bound steering angle to highway limits (prevent spinning sideways/backwards)
+      this.angle = clamp(this.angle, -0.5, 0.5);
     }
 
     this.x -= Math.sin(this.angle) * this.speed;
