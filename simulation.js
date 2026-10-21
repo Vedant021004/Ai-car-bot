@@ -914,9 +914,13 @@ class Simulation {
     } else {
       // Center hazard (head-on / rear-end) -> immediate BRAKE + evasive swerve
       lvlOut.biases[3] -= 0.35; // aggressive brake trigger
-      const escape = Math.random() < 0.5 ? 1 : 2;
-      lvlOut.biases[escape] -= 0.25;
-      lvlOut.biases[escape === 1 ? 2 : 1] += 0.15;
+      // Choose escape direction based on lateral positioning on road
+      const lateralDev = failureContext?.lateralDev ?? 0;
+      // If car was left of center (lateralDev < 0), steer RIGHT (output 2) to overtake
+      // If car was right of center (lateralDev > 0), steer LEFT (output 1) to overtake
+      const escape = lateralDev < 0 ? 2 : (lateralDev > 0 ? 1 : (Math.random() < 0.5 ? 2 : 1));
+      lvlOut.biases[escape] -= 0.28;
+      lvlOut.biases[escape === 1 ? 2 : 1] += 0.20;
     }
 
     return repaired;

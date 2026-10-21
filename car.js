@@ -90,6 +90,53 @@ class Car {
         this.controls.left = outputs[1] === 1;
         this.controls.right = outputs[2] === 1;
         this.controls.down = outputs[3] === 1;
+
+        // Dynamic Bi-Directional Overtake & Clear Gap Resolution:
+        // Allows the vehicle to flexibly choose to overtake from EITHER direction (left or right)
+        // based on real-time spatial clearance, preventing getting stuck on left overtake.
+        const r = this.sensor.readings;
+        if (r && r.length >= 5) {
+          const leftDanger = Math.max(
+            r[0] ? (1 - r[0].offset) : 0,
+            r[1] ? (1 - r[1].offset) : 0
+          );
+          const rightDanger = Math.max(
+            r[4] ? (1 - r[4].offset) : 0,
+            r[3] ? (1 - r[3].offset) : 0
+          );
+          const centerDanger = r[2] ? (1 - r[2].offset) : 0;
+
+          // 1. Conflict resolution: if network commands both left and right simultaneously, pick the open gap
+          if (this.controls.left && this.controls.right) {
+            if (leftDanger < rightDanger) {
+              this.controls.right = false;
+            } else {
+              this.controls.left = false;
+            }
+          }
+
+          // 2. Obstacle ahead avoidance: if center danger is elevated, overtake via the clearer side
+          if (centerDanger > 0.35) {
+            if (leftDanger > rightDanger + 0.12) {
+              // Left is blocked/tight -> dynamically steer RIGHT to overtake
+              this.controls.right = true;
+              this.controls.left = false;
+            } else if (rightDanger > leftDanger + 0.12) {
+              // Right is blocked/tight -> dynamically steer LEFT to overtake
+              this.controls.left = true;
+              this.controls.right = false;
+            }
+          }
+
+          // 3. Imminent side collision / curb avoidance: if steering into an obstacle while the other side is free, redirect
+          if (this.controls.left && leftDanger > 0.65 && rightDanger < 0.45) {
+            this.controls.left = false;
+            this.controls.right = true; // redirect to clear right lane
+          } else if (this.controls.right && rightDanger > 0.65 && leftDanger < 0.45) {
+            this.controls.right = false;
+            this.controls.left = true; // redirect to clear left lane
+          }
+        }
       }
     }
   }
