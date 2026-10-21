@@ -150,6 +150,14 @@ class Simulation {
     }
     if (partial.scenarioId) {
       this.scenarioManager.setScenario(partial.scenarioId, this.options.seed);
+      const scen = this.scenarioManager.activeConfig;
+      if (scen.roadCurvature !== undefined && this.road.setCurvature) {
+        this.road.setCurvature(scen.roadCurvature);
+      }
+    }
+    if (partial.roadCurvature !== undefined && this.road.setCurvature) {
+      this.options.roadCurvature = partial.roadCurvature;
+      this.road.setCurvature(partial.roadCurvature);
     }
     if (partial.sensorNoise !== undefined) {
       this.options.sensorNoise = partial.sensorNoise;
@@ -297,16 +305,16 @@ class Simulation {
       const speed = this.options.seed != null
         ? this.prng.range(1.5, 3.5)
         : randRange(1.5, 3.5);
-      this.traffic.push(
-        new Car(
-          laneX,
-          y,
-          30,
-          50,
-          ControlMode.DUMMY,
-          speed
-        )
+      const tc = new Car(
+        laneX,
+        y,
+        30,
+        50,
+        ControlMode.DUMMY,
+        speed
       );
+      tc.assignedLane = lane;
+      this.traffic.push(tc);
     }
   }
 
@@ -343,9 +351,21 @@ class Simulation {
 
   // --- Step -----------------------------------------------------------------
   step() {
+    // Dynamically update curved road border segments around the active camera/leader
+    if (this.road.updateBordersForView) {
+      this.road.updateBordersForView(this.bestCar ? this.bestCar.y : this.startY);
+    }
+
     // Update traffic
     for (let i = 0; i < this.traffic.length; i++) {
       const t = this.traffic[i];
+      // On curved roads, guide traffic along its assigned curved lane
+      if (this.road.hasCurves && t.assignedLane !== undefined) {
+        const targetX = this.road.getLaneCenter(t.assignedLane, t.y);
+        t.x = lerp(t.x, targetX, 0.08);
+        const lookAheadX = this.road.getLaneCenter(t.assignedLane, t.y - 30);
+        t.angle = lerp(t.angle, -(lookAheadX - targetX) * 0.04, 0.08);
+      }
       const others = this.traffic.length > 1
         ? this.traffic.filter((x, j) => j !== i)
         : [];

@@ -56,7 +56,9 @@
       <div class="scenario-group">
         <label for="select-scenario" class="sr-only">Driving Scenario</label>
         <select id="select-scenario" class="nav-select">
-          <option value="highway_cruise" selected>Highway Cruise (Standard)</option>
+          <option value="highway_cruise" selected>Highway Cruise (Gentle Curves)</option>
+          <option value="winding_turns">🏔 Winding Highway (Curves & Turns)</option>
+          <option value="mountain_chicane">🌀 Mountain Chicane (S-Bends)</option>
           <option value="heavy_commute">Heavy Commute (Dense)</option>
           <option value="chicane_obstacles">Chicane Slalom (Agile)</option>
           <option value="fog_low_visibility">Fog / Low Visibility (110px)</option>
@@ -272,6 +274,12 @@
             <span class="param-label">Sim-to-Real Sensor Noise</span>
             <input id="sl-noise" type="range" min="0" max="0.20" step="0.02" value="0" />
             <output id="v-noise" class="param-val">0%</output>
+          </label>
+
+          <label class="param-slider">
+            <span class="param-label">Road Curvature & Turns</span>
+            <input id="sl-curvature" type="range" min="0" max="1.5" step="0.1" value="0.8" />
+            <output id="v-curvature" class="param-val">80%</output>
           </label>
 
           <label class="param-slider">

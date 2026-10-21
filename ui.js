@@ -61,6 +61,8 @@ class UI {
       vRayLen: $("v-raylen"),
       slNoise: $("sl-noise"),
       vNoise: $("v-noise"),
+      slCurvature: $("sl-curvature"),
+      vCurvature: $("v-curvature"),
       slSpeed: $("sl-speed"),
       vSpeed: $("v-speed"),
 
@@ -168,6 +170,11 @@ class UI {
       e.slNoise.value = o.sensorNoise || 0;
       if (e.vNoise) e.vNoise.textContent = Math.round((o.sensorNoise || 0) * 100) + "%";
     }
+    if (e.slCurvature) {
+      const cur = sim.road?.curveIntensity ?? 0.85;
+      e.slCurvature.value = cur;
+      if (e.vCurvature) e.vCurvature.textContent = Math.round(cur * 100) + "%";
+    }
     if (e.slSpeed) {
       e.slSpeed.value = this.app.speedMultiplier;
       if (e.vSpeed) e.vSpeed.textContent = this.app.speedMultiplier + "×";
@@ -210,9 +217,11 @@ class UI {
     e.selectScenario?.addEventListener("change", (ev) => {
       const scen = ev.target.value;
       sim.setOptions({ scenarioId: scen });
+      this.#syncControlsFromOptions();
       sim.reset();
       this.app.chart.reset();
-      this.toast(`Scenario: ${sim.scenarioManager.activeConfig.name}`);
+      const cfg = sim.scenarioManager.activeConfig;
+      this.toast(`Scenario: ${cfg.name} (Turns: ${Math.round((sim.road?.curveIntensity || 0) * 100)}%)`);
     });
 
     // Population
@@ -288,6 +297,13 @@ class UI {
       const val = parseFloat(e.slNoise.value);
       if (e.vNoise) e.vNoise.textContent = Math.round(val * 100) + "%";
       sim.setOptions({ sensorNoise: val });
+    });
+
+    // Road Curvature & Highway Turns
+    e.slCurvature?.addEventListener("input", () => {
+      const val = parseFloat(e.slCurvature.value);
+      if (e.vCurvature) e.vCurvature.textContent = Math.round(val * 100) + "%";
+      sim.setOptions({ roadCurvature: val });
     });
 
     // Speed Multiplier
