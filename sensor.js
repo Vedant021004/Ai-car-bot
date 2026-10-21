@@ -4,6 +4,7 @@ class Sensor {
     this.rayCount = rayCount;
     this.rayLength = rayLength;
     this.raySpread = raySpread;
+    this.noise = 0;
     this.readings = [];
     this.rays = [];
   }
@@ -44,6 +45,16 @@ class Sensor {
     let best = touches[0];
     for (let i = 1; i < touches.length; i++) {
       if (touches[i].offset < best.offset) best = touches[i];
+    }
+
+    // Gaussian-like Sim-to-Real sensor measurement noise injection
+    if (best && this.noise > 0) {
+      const noisyOffset = clamp(best.offset + (Math.random() - 0.5) * this.noise, 0, 1);
+      return {
+        x: lerp(ray[0].x, ray[1].x, noisyOffset),
+        y: lerp(ray[0].y, ray[1].y, noisyOffset),
+        offset: noisyOffset,
+      };
     }
     return best;
   }

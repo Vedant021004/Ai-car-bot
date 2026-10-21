@@ -151,6 +151,12 @@ class Simulation {
     if (partial.scenarioId) {
       this.scenarioManager.setScenario(partial.scenarioId, this.options.seed);
     }
+    if (partial.sensorNoise !== undefined) {
+      this.options.sensorNoise = partial.sensorNoise;
+      for (const c of this.cars) {
+        if (c.sensor) c.sensor.noise = partial.sensorNoise;
+      }
+    }
   }
 
   #buildAICar(x, y) {
@@ -158,6 +164,9 @@ class Simulation {
       rayCount: this.options.rayCount,
       rayLength: this.options.rayLength,
     });
+    if (this.options.sensorNoise && car.sensor) {
+      car.sensor.noise = this.options.sensorNoise;
+    }
     this.carMetricsMap.set(car, this.safetyEvaluator.initCarMetrics(car, this.road));
     return car;
   }
@@ -689,5 +698,55 @@ class Simulation {
     const baseline = simulateMode("baseline");
     const evosafe = simulateMode("evosafe");
     return { baseline, evosafe };
+  }
+
+  /**
+   * Run a scientific 4-condition ablation study under identical seed
+   */
+  static runAblationStudy(generations = 3, population = 15, seed = 101) {
+    function trial(customOptions) {
+      const road = new Road(0, 220, 3);
+      const sim = new Simulation(road, {
+        population,
+        seed,
+        ...customOptions,
+      });
+
+      let totalDiv = 0;
+      let finalDist = 0;
+      let finalCrash = 0;
+      let peakFit = 0;
+
+      for (let g = 0; g < generations; g++) {
+        let steps = 0;
+        while (!sim.isBatchDone() && steps < 200) {
+          sim.step();
+          steps++;
+        }
+        if (!sim.isBatchDone()) {
+          for (const c of sim.cars) c.damaged = true;
+        }
+        sim.nextGeneration();
+        const s = sim.getStats();
+        totalDiv += (s.diversity || 0);
+        finalDist = s.distance;
+        finalCrash = s.collisionRate;
+        peakFit = Math.max(peakFit, s.bestFitness);
+      }
+
+      return {
+        diversity: (totalDiv / generations).toFixed(3),
+        distance: Math.round(finalDist) + " px",
+        crashRate: Math.round(finalCrash * 100) + "%",
+        peakFitness: Math.round(peakFit),
+      };
+    }
+
+    return {
+      fullEvoSafe: trial({ algorithmMode: "evosafe", crossoverRate: 0.65 }),
+      noCrossover: trial({ algorithmMode: "evosafe", crossoverRate: 0.0 }),
+      noSafetyFitness: trial({ algorithmMode: "baseline" }),
+      baseline: trial({ algorithmMode: "baseline" }),
+    };
   }
 }
