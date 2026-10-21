@@ -261,14 +261,6 @@ class Simulation {
       y -= randG();
     }
     this._trafficFrontierY = y;
-
-    // Backward (behind start): sparse traffic so cars that drift back still see obstacles.
-    let yb = this.startY + 350;
-    const behindLimit = this.startY + this.options.trafficBehindDistance;
-    while (yb < behindLimit) {
-      this.#spawnRow(yb);
-      yb += randG();
-    }
   }
 
   #maybeSpawnTraffic() {
@@ -279,7 +271,8 @@ class Simulation {
       this._trafficFrontierY -= randG();
       this.#spawnRow(this._trafficFrontierY);
     }
-    const behindLimit = this.bestCar.y + this.options.trafficBehindDistance;
+    // Recycle traffic cars that have fallen behind the leader
+    const behindLimit = this.bestCar.y + 450;
     if (this.traffic.length > 0) {
       this.traffic = this.traffic.filter((t) => t.y < behindLimit);
     }
@@ -337,6 +330,28 @@ class Simulation {
       if (cFit > bFit) best = c;
     }
     this.bestCar = best;
+
+    // Retire backward cars / stragglers that lag too far behind the leader
+    const maxLag = 600;
+    for (const car of this.cars) {
+      if (!car.damaged) {
+        // Lag retirement: car fell far behind the active leader
+        if (this.bestCar && !this.bestCar.damaged && car.y > this.bestCar.y + maxLag) {
+          car.damaged = true;
+          car._retired = "lag";
+        }
+        // Idle retirement: car stagnant for > 150 frames (~2.5 seconds)
+        if (Math.abs(car.speed) < 0.15) {
+          car._idleFrames = (car._idleFrames || 0) + 1;
+          if (car._idleFrames > 150) {
+            car.damaged = true;
+            car._retired = "idle";
+          }
+        } else {
+          car._idleFrames = 0;
+        }
+      }
+    }
 
     this.particles.update();
     this.#maybeSpawnTraffic();

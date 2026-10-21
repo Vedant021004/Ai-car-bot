@@ -164,7 +164,9 @@ class Car {
     if (this.controls.down) this.speed -= this.acceleration;
 
     if (this.speed > this.maxSpeed) this.speed = this.maxSpeed;
-    if (this.speed < -this.maxSpeed / 2) this.speed = -this.maxSpeed / 2;
+    // Disallow backward reverse driving for AI cars (highway safety invariant: cars do not reverse into traffic)
+    const minSpeed = this.useBrain ? 0 : -this.maxSpeed / 2;
+    if (this.speed < minSpeed) this.speed = minSpeed;
 
     if (this.speed > 0) this.speed -= this.friction;
     if (this.speed < 0) this.speed += this.friction;
