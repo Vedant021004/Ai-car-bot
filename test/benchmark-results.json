@@ -1,0 +1,294 @@
+{
+  "timestamp": "2026-10-21T12:52:33.930Z",
+  "seeds": [
+    101,
+    202,
+    303
+  ],
+  "generations": 4,
+  "population": 40,
+  "baseline": {
+    "peakFitness": {
+      "mean": 1128.100000000005,
+      "std": 0
+    },
+    "finalDistance": {
+      "mean": 0,
+      "std": 0
+    },
+    "diversity": {
+      "mean": 0.07274491780361407,
+      "std": 0.000566558125694546
+    },
+    "trials": [
+      {
+        "algorithm": "baseline",
+        "seed": 101,
+        "generations": [
+          {
+            "generation": 0,
+            "bestFitness": 614.1999999999995,
+            "avgFitness": 85.0773981611986,
+            "distance": 0,
+            "collisionRate": 1,
+            "diversity": 0.07322579979605885
+          },
+          {
+            "generation": 1,
+            "bestFitness": 1128.100000000005,
+            "avgFitness": 486.0105597223169,
+            "distance": 0,
+            "collisionRate": 1,
+            "diversity": 0.07448231369051479
+          },
+          {
+            "generation": 2,
+            "bestFitness": 1128.100000000005,
+            "avgFitness": 392.83773643634333,
+            "distance": 0,
+            "collisionRate": 1,
+            "diversity": 0.07359477730904115
+          },
+          {
+            "generation": 3,
+            "bestFitness": 909.2500000000013,
+            "avgFitness": 482.92126679100903,
+            "distance": 0,
+            "collisionRate": 1,
+            "diversity": 0.07287875217179095
+          }
+        ],
+        "peakFitness": 1128.100000000005,
+        "finalDistance": 0,
+        "finalCollisionRate": 1,
+        "meanDiversity": 0.07354541074185143
+      },
+      {
+        "algorithm": "baseline",
+        "seed": 202,
+        "generations": [
+          {
+            "generation": 0,
+            "bestFitness": 575.900000000003,
+            "avgFitness": 15.85478063124738,
+            "distance": 0,
+            "collisionRate": 1,
+            "diversity": 0.07318627770241323
+          },
+          {
+            "generation": 1,
+            "bestFitness": 929.5795203694558,
+            "avgFitness": 430.97385150862874,
+            "distance": 0,
+            "collisionRate": 1,
+            "diversity": 0.0729113191276872
+          },
+          {
+            "generation": 2,
+            "bestFitness": 928.7530745964292,
+            "avgFitness": 442.99268511040134,
+            "distance": 0,
+            "collisionRate": 1,
+            "diversity": 0.07214183547545766
+          },
+          {
+            "generation": 3,
+            "bestFitness": 1128.100000000005,
+            "avgFitness": 570.643754514884,
+            "distance": 0,
+            "collisionRate": 1,
+            "diversity": 0.07125861510746274
+          }
+        ],
+        "peakFitness": 1128.100000000005,
+        "finalDistance": 0,
+        "finalCollisionRate": 1,
+        "meanDiversity": 0.0723745118532552
+      },
+      {
+        "algorithm": "baseline",
+        "seed": 303,
+        "generations": [
+          {
+            "generation": 0,
+            "bestFitness": 284.1999999999996,
+            "avgFitness": 8.563262234290743,
+            "distance": 0,
+            "collisionRate": 1,
+            "diversity": 0.07312738724426864
+          },
+          {
+            "generation": 1,
+            "bestFitness": 742.9893660483509,
+            "avgFitness": 210.1942242616674,
+            "distance": 0,
+            "collisionRate": 1,
+            "diversity": 0.0717440941828488
+          },
+          {
+            "generation": 2,
+            "bestFitness": 1128.100000000005,
+            "avgFitness": 321.27488913876357,
+            "distance": 0,
+            "collisionRate": 1,
+            "diversity": 0.07217245851559707
+          },
+          {
+            "generation": 3,
+            "bestFitness": 1128.100000000005,
+            "avgFitness": 859.5270522724388,
+            "distance": 0,
+            "collisionRate": 1,
+            "diversity": 0.07221538332022777
+          }
+        ],
+        "peakFitness": 1128.100000000005,
+        "finalDistance": 0,
+        "finalCollisionRate": 1,
+        "meanDiversity": 0.07231483081573556
+      }
+    ]
+  },
+  "evoSafe": {
+    "peakFitness": {
+      "mean": 167.79862817168498,
+      "std": 121.36645009467942
+    },
+    "finalDistance": {
+      "mean": 0,
+      "std": 0
+    },
+    "diversity": {
+      "mean": 0.3785324341110046,
+      "std": 0.0023147698676248382
+    },
+    "trials": [
+      {
+        "algorithm": "evosafe",
+        "seed": 101,
+        "generations": [
+          {
+            "generation": 0,
+            "bestFitness": 69.10860139728122,
+            "avgFitness": -1794.4546851009297,
+            "distance": 0,
+            "collisionRate": 1,
+            "diversity": 0.40316359427377546
+          },
+          {
+            "generation": 1,
+            "bestFitness": -172.4071244226449,
+            "avgFitness": -1207.722360647046,
+            "distance": 0,
+            "collisionRate": 1,
+            "diversity": 0.3862132846383577
+          },
+          {
+            "generation": 2,
+            "bestFitness": -167.19671157248894,
+            "avgFitness": -1019.4948665291397,
+            "distance": 0,
+            "collisionRate": 1,
+            "diversity": 0.3646000729992675
+          },
+          {
+            "generation": 3,
+            "bestFitness": 202.22334590891052,
+            "avgFitness": -561.7564605575474,
+            "distance": 0,
+            "collisionRate": 1,
+            "diversity": 0.37014618494173784
+          }
+        ],
+        "peakFitness": 202.22334590891052,
+        "finalDistance": 0,
+        "finalCollisionRate": 1,
+        "meanDiversity": 0.3810307842132846
+      },
+      {
+        "algorithm": "evosafe",
+        "seed": 202,
+        "generations": [
+          {
+            "generation": 0,
+            "bestFitness": -69.50031158653752,
+            "avgFitness": -1506.6624571491418,
+            "distance": 0,
+            "collisionRate": 1,
+            "diversity": 0.3955816145025259
+          },
+          {
+            "generation": 1,
+            "bestFitness": -58.17051557121445,
+            "avgFitness": -870.2907006338888,
+            "distance": 0,
+            "collisionRate": 1,
+            "diversity": 0.381048957226393
+          },
+          {
+            "generation": 2,
+            "bestFitness": 62.84792025335799,
+            "avgFitness": -1129.1996887472724,
+            "distance": 0,
+            "collisionRate": 1,
+            "diversity": 0.38142282359445606
+          },
+          {
+            "generation": 3,
+            "bestFitness": 296.2088187911605,
+            "avgFitness": -802.0840012535065,
+            "distance": 0,
+            "collisionRate": 1,
+            "diversity": 0.3584073138180889
+          }
+        ],
+        "peakFitness": 296.2088187911605,
+        "finalDistance": 0,
+        "finalCollisionRate": 1,
+        "meanDiversity": 0.3791151772853659
+      },
+      {
+        "algorithm": "evosafe",
+        "seed": 303,
+        "generations": [
+          {
+            "generation": 0,
+            "bestFitness": -247.91171710965668,
+            "avgFitness": -1667.923165516014,
+            "distance": 0,
+            "collisionRate": 1,
+            "diversity": 0.4114324610082006
+          },
+          {
+            "generation": 1,
+            "bestFitness": -126.5660438931755,
+            "avgFitness": -835.0427242075875,
+            "distance": 0,
+            "collisionRate": 1,
+            "diversity": 0.3847016162193102
+          },
+          {
+            "generation": 2,
+            "bestFitness": 4.963719814983916,
+            "avgFitness": -678.9200100773584,
+            "distance": 0,
+            "collisionRate": 1,
+            "diversity": 0.3553764825841258
+          },
+          {
+            "generation": 3,
+            "bestFitness": -22.163940944372882,
+            "avgFitness": -824.6237058782903,
+            "distance": 0,
+            "collisionRate": 1,
+            "diversity": 0.3502948035258164
+          }
+        ],
+        "peakFitness": 4.963719814983916,
+        "finalDistance": 0,
+        "finalCollisionRate": 1,
+        "meanDiversity": 0.37545134083436327
+      }
+    ]
+  }
+}

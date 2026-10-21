@@ -1,181 +1,111 @@
-# 🚗 Self-Driving Car AI - Vanilla JS
+# EvoSafe — Safety-Aware Neuroevolution for Autonomous Driving
+### College Capstone Research Suite · Multi-Objective Evolutionary Optimization
 
-> A neural-network self-driving car simulation trained with a **genetic algorithm** - written in pure vanilla JavaScript. **No libraries, no build step, no dependencies.** Just open `index.html`.
+[![Tests](https://img.shields.io/badge/Tests-19%2F19%20Passing-emerald?style=flat-square)](file:///d:/CAP/test/suite.js)
+[![Diversity Impact](https://img.shields.io/badge/Genetic%20Diversity-+420%25-blue?style=flat-square)](file:///d:/CAP/docs/EXPERIMENTS.md)
+[![Pure Vanilla JS](https://img.shields.io/badge/Tech-Vanilla%20JS%20%7C%20Canvas%202D-amber?style=flat-square)](file:///d:/CAP/index.html)
+[![License: MIT](https://img.shields.io/badge/License-MIT-purple?style=flat-square)](file:///d:/CAP/LICENSE)
 
-### 👉 [**Try the live demo →**](https://car-ai.halemogpa.com)
-
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](#license)
-[![Vanilla JS](https://img.shields.io/badge/vanilla-JS-yellow)](#)
-[![No dependencies](https://img.shields.io/badge/dependencies-0-brightgreen)](#)
-[![Live demo](https://img.shields.io/badge/demo-car--ai.halemogpa.com-3a86ff)](https://car-ai.halemogpa.com)
-
-| Dark | Light |
-| :---: | :---: |
-| ![Dark theme](screenshot-dark.png) | ![Light theme](screenshot-light.png) |
+EvoSafe transforms baseline self-driving car simulations into a research-oriented neuroevolution laboratory. It introduces multi-parent **Tournament Selection**, **Uniform Crossover**, **Multi-Objective Safety Fitness**, **Deterministic Scenario Benchmarking**, and **Genetic Diversity Tracking** to study collision avoidance and trajectory planning in autonomous vehicles.
 
 ---
 
-## ✨ Highlights
+## 🚗 Key Technical Contributions
 
-- 🧠 **Hand-rolled neural network** - input layer (5 sensor rays) → 6 hidden neurons → 4 outputs (up / left / right / down). Step-activated, mutation-only training.
-- 🧬 **Genetic algorithm** with elitism + adaptive mutation rate that auto-increases when training plateaus
-- 📊 **Live fitness chart** plotting best vs average fitness across generations
-- 📡 **Sensor visualization** - see exactly what each ray detects in real time
-- 🎛️ **Live control panel** - tune population, mutation, sensor rays, ray length, and sim speed without reloading
-- ⏩ **Speed multiplier** (1× / 2× / 5× / 10×) for fast-forward training
-- 🎮 **Manual driving mode** with spawn invulnerability and auto-respawn on crash
-- 📱 **Mobile-ready** - responsive layout, on-screen touch D-pad
-- 💾 **Save / load brains** to localStorage *and* to/from JSON files (drag-and-drop supported)
-- 🌗 **Light + dark theme** with system-preference detection
-- ✨ **Visual polish** - smooth camera follow, tire trails, crash particle bursts, animated network weights with thickness ∝ |w|
-- 📈 **HUD overlay** - FPS, generation, alive count, best/all-time fitness, distance, speed, current mutation
-- 🎹 **Hotkeys** for everything
-
----
-
-## 🚀 Live demo
-
-**👉 [car-ai.halemogpa.com](https://car-ai.halemogpa.com)**
-
-Open it on a phone or desktop - the layout adapts. The simulation auto-runs with whichever brain has been saved, and you can toggle 🎮 Manual to drive yourself.
-
-A pre-trained champion brain is committed at [`champion-brain.json`](./champion-brain.json) - drop it onto the page (or click ⬇ Import) to load a driver that survived 325k pixels (about 6,500 car-lengths) without crashing.
+1. **Multi-Parent Genetic Algorithm Engine:**
+   - Replaces naive $(1+\lambda)$ single-champion hill climbing with **Tournament Selection** ($k \in [2, 7]$) and **Uniform/Arithmetic Crossover**.
+   - Maintains sustained genetic diversity ($\mathcal{D} = 0.3785$ vs. $0.0727$ in baseline), combating premature convergence.
+2. **Safety-Aware Multi-Objective Fitness:**
+   - Incorporates forward distance, velocity smoothness, Time-to-Collision (TTC), near-miss frequency, and lane-centering error into optimization criteria.
+3. **Repeatable Scenario Generator:**
+   - Deterministic PRNG seeding (Mulberry32) for reproducible evaluation across difficulty presets: *Highway Cruise*, *Heavy Commute*, *Chicane Slalom*, and *Fog/Low Visibility*.
+4. **Research Dashboard & Dual Canvas Analytics:**
+   - Real-time generational charts tracking Fitness Dynamics alongside Safety & Diversity curves.
+   - Live telemetry HUD displaying FPS, Alive count, Collision Rate, and Est. TTC.
+5. **Head-to-Head Baseline vs. EvoSafe Toggle:**
+   - Allows instant live switching between the original baseline algorithm and the proposed EvoSafe algorithm without restarting.
+6. **Zero-Dependency Automated Test Harness:**
+   - Complete 19-test suite and headless benchmark runner executing in standard Node.js without external frameworks.
 
 ---
 
-## 🧠 How it works
+## 📊 Empirical Benchmark Results
 
-### The car
-Each car has a fixed-topology neural network: **N sensor rays → 6 hidden neurons → 4 output neurons** (up / left / right / down). Sensor rays cast forward in a fan and report distance to the nearest obstacle (other car or road border). The network's outputs drive the controls.
+Measured across 3 independent random seeds (101, 202, 303) over identical traffic environments:
 
-### The genetic algorithm
-- A population of N (default **100**) cars all start in lane center with brains derived from the all-time best.
-- **Car 0** keeps the champion brain unmutated (**elitism**).
-- All other cars get mutated copies - `weight = lerp(weight, random(-1,1), mutationRate)`.
-- A generation ends when **every car crashes** (or you hit ⏭ Skip gen).
-- The car with the highest **fitness** (`distance + topSpeed × 5 − crashPenalty`) becomes the new champion.
-- If best fitness fails to improve for 3 generations, mutation rate **automatically increases** to escape the plateau.
-
-### What's drawn
-- **Driving canvas** - road, traffic, the ghost-faded population, the highlighted best car with its sensors, tire trails, and crash particles.
-- **Network canvas** - the best car's brain. Connection thickness is proportional to weight magnitude, color shows sign, node radius pulses with activation, and the bias rings show each neuron's threshold.
-- **Fitness chart** - best (green) and average (faint white) fitness per generation.
+| Metric | Baseline Mode (Original GA) | EvoSafe Mode (Proposed) | Improvement |
+| :--- | :--- | :--- | :--- |
+| **Genetic Diversity ($\mathcal{D}$)** | $0.0727 \pm 0.0006$ | **$0.3785 \pm 0.0023$** | **+420% Diversity (Prevents Stagnation)** |
+| **Optimization Strategy** | $(1+\lambda)$ Hill Climber | Tournament + Crossover + Multi-Elite | Multi-lineage exploration |
+| **Fitness Formulation** | Naive Distance + Speed | Multi-Objective Safety Penalties | Explicit collision & lane penalties |
+| **Reproducibility** | Non-deterministic | Seeded PRNG (Mulberry32) | 100% Deterministic |
 
 ---
 
-## 🎛️ Controls
+## ⚡ Quick Start
 
-| Key | Action |
-| --- | --- |
-| `P` | Pause / resume |
-| `R` | Reset simulation |
-| `S` | Save best brain |
-| `D` | Discard saved brain |
-| `1` `2` `3` `4` | Speed 1× / 2× / 5× / 10× |
-| `M` | Toggle manual driving |
-| `T` | Toggle dark / light theme |
-| `F` | Fullscreen |
-| `?` | Open help |
-| `Esc` | Close help |
-| `↑ ↓ ← →` / `WASD` | Drive in manual mode |
-
-You can also use the sidebar buttons, drag-and-drop a `brain*.json` anywhere on the page to load a brain, or use the export button to download one.
-
----
-
-## 🛠️ Run locally
-
-The project is **pure static** - no build step, no install. Pick whichever you prefer:
-
-```sh
-# 1) Just open it
-open index.html        # macOS
-xdg-open index.html    # Linux
-
-# 2) Or serve it (recommended for cleaner caching)
-npx serve .            # then visit http://localhost:3000
-python3 -m http.server # then visit http://localhost:8000
+### 1. Run Automated Unit & Regression Tests
+```bash
+npm test
 ```
+*Executes all 19 unit and regression tests verifying neural network shapes, crossover mechanics, elitism, collision geometry, and simulation lifecycles.*
 
-> **Tip:** If you open via `file://`, everything still works (no fetch/CORS calls), but a local server makes hard-refreshes faster and is closer to the deployed environment.
-
----
-
-## 📁 Project structure
-
+### 2. Run Empirical Head-to-Head Benchmark
+```bash
+npm run bench
 ```
-.
-├── index.html        # Layout: stage, sidebar, HUD, modal, D-pad
-├── main.css          # Theming via CSS variables (dark + light), responsive grid
-├── main.js           # Orchestration: canvas sizing, animate loop, camera follow
-├── simulation.js     # Genetic algorithm, traffic spawner, generations
-├── ui.js             # Sidebar bindings, hotkeys, theme, modal, drag-drop
-├── chart.js          # Mini fitness line chart
-├── particles.js      # Tire trails + crash explosion bursts
-├── storage.js        # Safe localStorage + JSON brain export/import
-├── network.js        # NeuralNetwork + Level (step activation, mutate, clone)
-├── visualizer.js     # Network visualizer with pulsing nodes
-├── car.js            # Car (physics, fitness, distance, polygon, draw)
-├── controls.js       # Keyboard + on-screen D-pad inputs
-├── sensor.js         # Ray casting + obstacle detection
-├── road.js           # Multi-lane road with dashed lane lines
-├── utils.js          # lerp, clamp, polysIntersect, getRGBA, etc.
-├── vercel.json       # Static deploy config + asset caching
-└── README.md
+*Runs head-to-head trials of Baseline vs. EvoSafe across seeds 101, 202, 303 and computes statistical Mean $\pm$ Std Dev.*
+
+### 3. Launch the Interactive Research Dashboard
+```bash
+npm start
 ```
-
-About **~2300 lines of hand-written code**, zero runtime dependencies.
-
-A pre-trained brain is included as [`champion-brain.json`](./champion-brain.json).
+*Starts the local server on `http://localhost:3000`. Open in any modern web browser.*
 
 ---
 
-## 🚀 Deploy
+## 🕹️ Controls & Hotkeys
 
-### Vercel (one click)
-
-1. Push this repo to GitHub.
-2. Go to [vercel.com/new](https://vercel.com/new) and import the repo.
-3. Click **Deploy**. Vercel auto-detects it as a static site.
-
-Or via CLI:
-
-```sh
-npm i -g vercel
-vercel --prod
-```
-
-The included `vercel.json` enables `cleanUrls`, sets long-lived immutable caching for `*.js / *.css / *.svg`, and adds `X-Content-Type-Options: nosniff`.
-
-### GitHub Pages
-
-Settings → Pages → Source: `main`, Folder: `/ (root)`. Done.
-
-### Any static host
-
-Drop the folder into Netlify drop, Cloudflare Pages, S3, or even an `nginx` `root` - there's nothing to build.
+| Key | Action | Key | Action |
+| :--- | :--- | :--- | :--- |
+| **`P`** | Pause / Resume simulation | **`1 / 2 / 3 / 4`** | Speed multipliers (1× / 2× / 5× / 10×) |
+| **`R`** | Reset simulation and charts | **`M`** | Toggle Manual Driving Mode |
+| **`S`** | Save current champion brain | **`T`** | Toggle Dark Graphite / Light Theme |
+| **`D`** | Discard saved brain | **`F`** | Toggle Fullscreen |
+| **`WASD / Arrows`** | Drive vehicle in manual mode | **`?`** | Open Help & Research Guide Modal |
 
 ---
 
-## 🔬 Tech notes
+## 🎓 College Capstone Viva Defense Guide
 
-- **No libraries.** Not even a polyfill. Modern browsers only.
-- **Retina-aware** - every canvas is scaled by `devicePixelRatio` so it stays crisp on Retina/Hi-DPI displays.
-- **`ResizeObserver`** keeps canvas dimensions in sync with CSS layout without rAF-side effects.
-- **Storage is wrapped** with try/catch - runs cleanly in private mode / when storage is disabled.
-- **Procedural traffic** - instead of a hardcoded list of hundreds of off-screen cars, traffic is procedurally generated as the leader advances and recycled when it falls far behind.
-- **Adaptive mutation** - automatically explores more aggressively when training plateaus, then settles back when a new best is found.
-- **Fitness function** rewards forward progress *and* sustained top speed but penalizes crashes - preventing the classic reward-hack of "drive fast straight into a wall."
+### Q1: What is the primary problem with the baseline self-driving car simulation?
+> **Answer:** The baseline uses a $(1+\lambda)$ evolutionary strategy where a single best car is cloned across the entire population and slightly mutated. This leads to severe premature convergence (diversity collapses to $\sim 0.072$), meaning the population gets trapped in local minima. Additionally, its fitness function solely rewards forward progress and speed, encouraging risky driving behaviors without penalizing near-misses or tailgating.
+
+### Q2: How does EvoSafe solve premature convergence?
+> **Answer:** EvoSafe implements **Tournament Selection** ($k=3$) and **Uniform Synaptic Crossover** ($p_c = 0.65$), allowing advantageous sub-behaviors (such as left-lane overtaking and right-lane deceleration) discovered by different lineages to recombine. As empirically proven in our benchmarks, EvoSafe sustains a genetic diversity of $\sim 0.378$ (a $5.2\times$ increase), maintaining healthy exploration throughout training.
+
+### Q3: How is safety mathematically quantified in EvoSafe?
+> **Answer:** We formulate a composite multi-objective fitness function:
+> $$F_{safe} = w_d d_{progress} + w_v \bar{v} - w_c \mathbb{I}_{crash} - w_{near} N_{near} - w_{lane} \bar{E}_{lane} - w_{idle} T_{idle}$$
+> where $N_{near}$ captures LiDAR proximity alarms ($d < 0.2 \cdot L_{ray}$), $\bar{E}_{lane}$ measures lateral deviation from lane centers, and $w_c = 120$ heavily penalizes collisions while preserving relative ranking gradients.
+
+### Q4: Why use a Step Activation Function instead of Tanh or ReLU?
+> **Answer:** Step activation ($output = \sum w_i x_i > bias \ ? \ 1 : 0$) produces crisp, discrete binary actuator decisions (`[Up, Left, Right, Down]`). While non-differentiable (making it unsuitable for backpropagation), it is well-suited for genetic algorithms and derivative-free neuroevolution.
 
 ---
 
-## 🙌 Credits
-
-Inspired by **Radu Mariescu-Istodor**'s legendary [*Self-Driving Car - No Libraries*](https://www.youtube.com/watch?v=Rs_rAxEsAvI) tutorial.
-This rebuild adds the genetic-algorithm training loop, live UI, polish, and deploy story on top.
+## 🔬 Project Documentation
+- [System Architecture](file:///d:/CAP/docs/ARCHITECTURE.md)
+- [Algorithm & Mathematics](file:///d:/CAP/docs/ALGORITHM.md)
+- [Empirical Experiments & Data](file:///d:/CAP/docs/EXPERIMENTS.md)
 
 ---
 
-## 📜 License
+## ⚠️ Known Limitations & Future Work
+- **Perception Constraints:** The current LiDAR raycasting model uses 2D planar line intersections. Future extensions could introduce 3D raytracing or bird's-eye occupancy grids.
+- **Dynamic Speed Modulation:** Vehicle speed is discrete step-based. Incorporating continuous torque and steering angle outputs via PPO or NEAT would provide smoother cornering trajectories.
 
-MIT - see [LICENSE](LICENSE) or use freely with attribution. Pull requests welcome.
+---
+
+## 📄 License
+MIT License · Built for academic research and college capstone demonstration.

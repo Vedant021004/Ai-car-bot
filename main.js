@@ -5,15 +5,16 @@
   const carCtx = carCanvas.getContext("2d");
   const networkCtx = networkCanvas.getContext("2d");
 
-  const road = new Road(0, 220, 3); // x=0 — we'll translate to canvas center on draw
+  const road = new Road(0, 220, 3); // x=0 — translated to canvas center on draw
   const simulation = new Simulation(road, {
     population: 100,
     mutationAmount: 0.18,
     rayCount: 5,
     rayLength: 180,
     maxSpeed: 5,
+    algorithmMode: "evosafe",
   });
-  const chart = new FitnessChart(chartCanvas);
+  const chart = new AnalyticsCharts(chartCanvas);
 
   const app = {
     simulation,
@@ -26,10 +27,10 @@
     fps: 60,
     _frames: 0,
     _lastFpsTime: performance.now(),
+
     spawnManualCar(showToast = true) {
       const spawnY = simulation.bestCar?.y ?? simulation.startY;
-      // Force-clear ALL traffic across ALL lanes within ±200px of spawn so the
-      // car can never spawn into an obstacle.
+      // Clear traffic in spawn vicinity to prevent insta-kill
       simulation.traffic = simulation.traffic.filter(
         (t) => Math.abs(t.y - spawnY) > 200
       );
@@ -45,10 +46,10 @@
           rayLength: simulation.options.rayLength,
         }
       );
-      // 60-frame invulnerability so a near-miss spawn can't insta-kill us.
       this.manualCar._spawnGrace = 60;
-      if (showToast) ui.toast("Manual mode 🎮 — arrows / WASD / D-pad");
+      if (showToast && ui) ui.toast("Manual Driving Mode 🎮 (WASD / Arrows / D-pad)");
     },
+
     toggleManualMode() {
       this.manualMode = !this.manualMode;
       if (this.manualMode) {
@@ -57,27 +58,31 @@
       } else {
         this.manualCar = null;
         document.body.classList.remove("manual-mode");
-        ui.toast("AI mode resumed 🤖");
+        if (ui) ui.toast("AI Autonomous Mode Resumed 🤖");
       }
     },
   };
 
   const ui = new UI(app);
 
-  // ---------- Canvas sizing (Retina-aware) ----------
+  // ---------- Canvas sizing (Hi-DPI Retina-aware) ----------
   function resizeCanvases() {
     const dpr = window.devicePixelRatio || 1;
     const carCssWidth = carCanvas.clientWidth;
     const carCssHeight = carCanvas.clientHeight;
-    carCanvas.width = carCssWidth * dpr;
-    carCanvas.height = carCssHeight * dpr;
-    carCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (carCssWidth > 0 && carCssHeight > 0) {
+      carCanvas.width = carCssWidth * dpr;
+      carCanvas.height = carCssHeight * dpr;
+      carCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
 
     const netCssWidth = networkCanvas.clientWidth;
     const netCssHeight = networkCanvas.clientHeight;
-    networkCanvas.width = netCssWidth * dpr;
-    networkCanvas.height = netCssHeight * dpr;
-    networkCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (netCssWidth > 0 && netCssHeight > 0) {
+      networkCanvas.width = netCssWidth * dpr;
+      networkCanvas.height = netCssHeight * dpr;
+      networkCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
 
     chart.resize(chartCanvas.clientWidth, chartCanvas.clientHeight, dpr);
   }
@@ -90,12 +95,10 @@
   } else {
     window.addEventListener("resize", resizeCanvases);
   }
-  // Run once after layout settles
   requestAnimationFrame(resizeCanvases);
 
-  // ---------- Animation loop ----------
+  // ---------- Animation & Simulation Loop ----------
   function animate(time) {
-    // FPS counter
     app._frames++;
     const now = performance.now();
     if (now - app._lastFpsTime >= 500) {
@@ -105,18 +108,15 @@
     }
 
     if (!app.paused) {
-      // Speed multiplier: run N physics ticks per render
       for (let s = 0; s < app.speedMultiplier; s++) {
         if (app.manualMode && app.manualCar) {
           const mc = app.manualCar;
           const wasDamaged = mc.damaged;
           mc.update(road.borders, simulation.traffic);
-          // Spawn-grace invulnerability: undamaged for the first N frames
           if (mc._spawnGrace > 0) {
             mc.damaged = false;
             mc._spawnGrace--;
           }
-          // Auto-respawn on crash so manual mode is forgiving
           if (!wasDamaged && mc.damaged) {
             simulation.particles.burst(mc.x, mc.y, 14, "#ff7676");
             setTimeout(() => {
@@ -129,29 +129,34 @@
       }
     }
 
-    // Auto-advance generation when all cars dead
+    // Auto-advance generation when all cars crashed
     if (
       !app.paused &&
       !app.manualMode &&
       simulation.cars.length > 0 &&
       simulation.isBatchDone()
     ) {
-      chart.push(simulation.bestCar.fitness, computeAvg(simulation.cars));
       simulation.nextGeneration();
+      const stats = simulation.getStats();
+      chart.push({
+        gen: simulation.generation,
+        best: simulation.bestFitnessThisGen,
+        avg: simulation.avgFitnessThisGen,
+        diversity: stats.diversity,
+        collisionRate: stats.collisionRate,
+      });
       ui.toast(
-        `Gen ${simulation.generation} → mut ${simulation.adaptiveMutation.toFixed(2)}`
+        `Gen ${simulation.generation} | Best ${formatNumber(simulation.bestFitnessThisGen, 1)} | Div ${(stats.diversity || 0).toFixed(2)}`
       );
     }
 
-    // ---------- Draw car canvas ----------
+    // ---------- Draw Road & Cars ----------
     const w = carCanvas.clientWidth;
     const h = carCanvas.clientHeight;
-    const bgColor = readCssVar("--road", "#404040");
+    const bgColor = readCssVar("--road", "#1c2128");
     carCtx.fillStyle = bgColor;
     carCtx.fillRect(0, 0, w, h);
 
-    // Camera target — keep last manual y during the brief crash→respawn window
-    // so the camera doesn't jump to the AI best car and back.
     let camY;
     if (app.manualMode) {
       if (app.manualCar) {
@@ -172,39 +177,38 @@
     road.draw(carCtx);
 
     for (const t of simulation.traffic) {
-      // Cull off-screen traffic for cheap perf win
       if (Math.abs(t.y - camY) > h + 200) continue;
-      t.draw(carCtx, readCssVar("--car-traffic", "#d62828"));
+      t.draw(carCtx, readCssVar("--car-traffic", "#f43f5e"));
     }
 
-    // Trails behind AI cars (only the ones near the camera)
+    // Trails behind surviving cars
     const nearAlive = simulation.cars.filter(
       (c) => !c.damaged && Math.abs(c.y - camY) < h
     );
     simulation.particles.drawTrails(carCtx, nearAlive);
 
-    // AI population (faded)
+    // AI population (semi-transparent)
     if (!app.manualMode && simulation.bestCar) {
       carCtx.globalAlpha = 0.22;
       for (const c of simulation.cars) {
         if (c === simulation.bestCar) continue;
         if (Math.abs(c.y - simulation.bestCar.y) > h + 200) continue;
-        c.draw(carCtx, readCssVar("--car-ai", "#3a86ff"));
+        c.draw(carCtx, readCssVar("--car-ai", "#38bdf8"));
       }
       carCtx.globalAlpha = 1;
       simulation.bestCar.draw(
         carCtx,
-        readCssVar("--car-best", "#3a86ff"),
+        readCssVar("--car-best", "#10b981"),
         true
       );
     } else if (app.manualCar) {
-      app.manualCar.draw(carCtx, readCssVar("--car-best", "#3a86ff"), true);
+      app.manualCar.draw(carCtx, readCssVar("--car-best", "#10b981"), true);
     }
 
     simulation.particles.draw(carCtx);
     carCtx.restore();
 
-    // ---------- Network visualizer ----------
+    // ---------- Draw Neural Visualizer ----------
     const netW = networkCanvas.clientWidth;
     const netH = networkCanvas.clientHeight;
     networkCtx.clearRect(0, 0, netW, netH);
@@ -216,26 +220,16 @@
       Visualizer.drawNetwork(networkCtx, visualizedBrain);
     }
 
-    // ---------- Chart ----------
+    // ---------- Draw Analytics Chart ----------
     chart.draw();
 
-    // ---------- HUD ----------
+    // ---------- Update Dashboard HUD ----------
     ui.updateHUD(simulation.getStats(), app.fps);
 
     requestAnimationFrame(animate);
   }
 
-  function computeAvg(cars) {
-    if (cars.length === 0) return 0;
-    let s = 0;
-    for (const c of cars) s += c.fitness;
-    return s / cars.length;
-  }
-
-  // Hook: every time bestFitness improves vs the previous gen we push to chart.
-  // We only push at generation boundary (handled above), but also seed point 0
-  // so the chart draws something earlier.
-  chart.push(0, 0);
-
+  // Seed chart with initial zero-state
+  chart.push({ gen: 0, best: 0, avg: 0, diversity: 0, collisionRate: 1 });
   requestAnimationFrame(animate);
 })();

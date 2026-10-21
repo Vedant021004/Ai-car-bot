@@ -17,6 +17,16 @@ class Simulation {
       rayLength: 180,
       maxSpeed: 5,
 
+      // Algorithm & Safety Options
+      algorithmMode: "evosafe", // 'baseline' | 'evosafe'
+      selectionMethod: "tournament", // 'tournament' | 'roulette'
+      tournamentSize: 3,
+      crossoverRate: 0.65,
+      crossoverType: "uniform",
+      eliteCount: 2,
+      scenarioId: "highway_cruise",
+      seed: 1001,
+
       // Traffic spawner — continuous & dense
       trafficAheadDistance: 3500, // keep this many px of traffic ahead of leader
       trafficBehindDistance: 1500, // recycle traffic this far behind leader
@@ -26,6 +36,25 @@ class Simulation {
 
       ...options,
     };
+
+    // Subsystems
+    this.prng = new PRNG(this.options.seed);
+    this.evolutionEngine = new EvolutionEngine({
+      mode: this.options.algorithmMode,
+      selectionMethod: this.options.selectionMethod,
+      tournamentSize: this.options.tournamentSize,
+      crossoverRate: this.options.crossoverRate,
+      crossoverType: this.options.crossoverType,
+      mutationAmount: this.options.mutationAmount,
+      eliteCount: this.options.eliteCount,
+      prng: this.prng,
+    });
+    this.safetyEvaluator = new SafetyEvaluator();
+    this.scenarioManager = new ScenarioManager({
+      scenarioId: this.options.scenarioId,
+      seed: this.options.seed,
+    });
+    this.experimentManager = new ExperimentManager();
 
     // Auto-discard brains saved under an older activation/architecture so we
     // don't load a brain that no longer responds (e.g. tanh-era brains under
@@ -46,8 +75,11 @@ class Simulation {
     this.avgFitnessThisGen = 0;
     this.plateauStreak = 0;
     this.adaptiveMutation = this.options.mutationAmount;
+    this.currentDiversity = 0;
+    this.lastEvaluationReport = null;
 
     this.cars = [];
+    this.carMetricsMap = new WeakMap();
     this.bestCar = null;
     this.traffic = [];
     this.particles = new ParticleSystem();
@@ -55,19 +87,44 @@ class Simulation {
     this._trafficFrontierY = 0; // furthest-ahead y where traffic exists
     this.startY = 600;
 
+    // Start experiment logging run
+    this.experimentManager.startRun({
+      algorithm: this.options.algorithmMode,
+      scenario: this.options.scenarioId,
+      seed: this.options.seed,
+      population: this.options.population,
+    });
+
     this.#spawnPopulation();
     this.#initialTraffic();
   }
 
   setOptions(partial) {
     Object.assign(this.options, partial);
+    if (partial.algorithmMode) {
+      this.evolutionEngine.setOptions({ mode: partial.algorithmMode });
+    }
+    if (partial.selectionMethod || partial.crossoverRate || partial.crossoverType || partial.eliteCount || partial.tournamentSize) {
+      this.evolutionEngine.setOptions({
+        selectionMethod: this.options.selectionMethod,
+        crossoverRate: this.options.crossoverRate,
+        crossoverType: this.options.crossoverType,
+        eliteCount: this.options.eliteCount,
+        tournamentSize: this.options.tournamentSize,
+      });
+    }
+    if (partial.scenarioId) {
+      this.scenarioManager.setScenario(partial.scenarioId, this.options.seed);
+    }
   }
 
   #buildAICar(x, y) {
-    return new Car(x, y, 30, 50, ControlMode.AI, this.options.maxSpeed, {
+    const car = new Car(x, y, 30, 50, ControlMode.AI, this.options.maxSpeed, {
       rayCount: this.options.rayCount,
       rayLength: this.options.rayLength,
     });
+    this.carMetricsMap.set(car, this.safetyEvaluator.initCarMetrics(car, this.road));
+    return car;
   }
 
   #spawnPopulation() {
@@ -85,22 +142,30 @@ class Simulation {
     const stored = this.bestEverBrain || Storage.get(SIM_KEY_BRAIN);
     if (!stored) return;
     this.bestEverBrain = stored;
-    for (let i = 0; i < this.cars.length; i++) {
-      this.cars[i].brain = NeuralNetwork.clone(stored);
-      if (i !== 0) NeuralNetwork.mutate(this.cars[i].brain, this.adaptiveMutation);
+
+    if (this.options.algorithmMode === "baseline") {
+      for (let i = 0; i < this.cars.length; i++) {
+        this.cars[i].brain = NeuralNetwork.clone(stored);
+        if (i !== 0) NeuralNetwork.mutate(this.cars[i].brain, this.adaptiveMutation);
+      }
+    } else {
+      // In EvoSafe mode, seed the population with champion mutations and diversity
+      for (let i = 0; i < this.cars.length; i++) {
+        this.cars[i].brain = NeuralNetwork.clone(stored);
+        if (i !== 0) {
+          this.evolutionEngine.mutate(this.cars[i].brain, 0.25, this.options.mutationAmount);
+        }
+      }
     }
+    this.currentDiversity = this.evolutionEngine.calculateDiversity(this.cars.map((c) => c.brain));
   }
 
   // --- Traffic --------------------------------------------------------------
-  // Pick which lanes to occupy in a single row, with these guarantees:
-  //   1. At least one lane is always clear (`maxBlocked = lanes - 1`)
-  //   2. The new clear lane is the previous one or adjacent, so the AI always
-  //      has a reachable path between consecutive rows.
   #pickRowBlockedLanes() {
     const lanes = this.road.laneCount;
     const maxBlocked = Math.min(lanes - 1, 2);
     const emptyChance = this.options.trafficEmptyRowChance ?? 0;
-    const r = Math.random();
+    const r = this.options.seed != null ? this.prng.random() : Math.random();
     let count;
     if (r < emptyChance) count = 0;
     else if (r < emptyChance + 0.6) count = 1;
@@ -113,12 +178,12 @@ class Simulation {
 
     const prev = this._prevClearLane ?? Math.floor(lanes / 2);
     const candidates = allLanes.filter((l) => Math.abs(l - prev) <= 1);
-    const clearLane = candidates[Math.floor(Math.random() * candidates.length)];
+    const clearLane = candidates[Math.floor((this.options.seed != null ? this.prng.random() : Math.random()) * candidates.length)];
     this._prevClearLane = clearLane;
 
     const blockable = allLanes.filter((l) => l !== clearLane);
     for (let i = blockable.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
+      const j = Math.floor((this.options.seed != null ? this.prng.random() : Math.random()) * (i + 1));
       [blockable[i], blockable[j]] = [blockable[j], blockable[i]];
     }
     return blockable.slice(0, numBlocked);
@@ -136,6 +201,9 @@ class Simulation {
           Math.abs(t.y - y) < minVerticalSpacing
       );
       if (collides) continue;
+      const speed = this.options.seed != null
+        ? this.prng.range(1.5, 3.5)
+        : randRange(1.5, 3.5);
       this.traffic.push(
         new Car(
           laneX,
@@ -143,7 +211,7 @@ class Simulation {
           30,
           50,
           ControlMode.DUMMY,
-          randRange(1.5, 3.5)
+          speed
         )
       );
     }
@@ -153,32 +221,32 @@ class Simulation {
     this.traffic = [];
     this._prevClearLane = 1;
     const [minGap, maxGap] = this.options.trafficRowGap;
+    const randG = () => (this.options.seed != null ? this.prng.range(minGap, maxGap) : randRange(minGap, maxGap));
+
     // Forward (ahead of start): dense rows from just ahead to far ahead.
     const startSpawn = this.startY - this.options.trafficStartGap;
     let y = startSpawn;
     while (y > startSpawn - this.options.trafficAheadDistance) {
       this.#spawnRow(y);
-      y -= randRange(minGap, maxGap);
+      y -= randG();
     }
     this._trafficFrontierY = y;
 
-    // Backward (behind start): sparse traffic so cars that drift back still
-    // see obstacles. Skip the spawn area immediately behind cars.
+    // Backward (behind start): sparse traffic so cars that drift back still see obstacles.
     let yb = this.startY + 350;
     const behindLimit = this.startY + this.options.trafficBehindDistance;
     while (yb < behindLimit) {
       this.#spawnRow(yb);
-      yb += randRange(minGap, maxGap);
+      yb += randG();
     }
   }
 
-  // Continuously top up traffic ahead of the leader and recycle traffic that
-  // has fallen far behind. This is what makes red-car generation feel infinite.
   #maybeSpawnTraffic() {
     const [minGap, maxGap] = this.options.trafficRowGap;
+    const randG = () => (this.options.seed != null ? this.prng.range(minGap, maxGap) : randRange(minGap, maxGap));
     const aheadTarget = this.bestCar.y - this.options.trafficAheadDistance;
     while (this._trafficFrontierY > aheadTarget) {
-      this._trafficFrontierY -= randRange(minGap, maxGap);
+      this._trafficFrontierY -= randG();
       this.#spawnRow(this._trafficFrontierY);
     }
     const behindLimit = this.bestCar.y + this.options.trafficBehindDistance;
@@ -189,8 +257,7 @@ class Simulation {
 
   // --- Step -----------------------------------------------------------------
   step() {
-    // Update traffic (each traffic car sees the others so rear-enders are
-    // detected and the loser can be culled instead of stacking visually).
+    // Update traffic
     for (let i = 0; i < this.traffic.length; i++) {
       const t = this.traffic[i];
       const others = this.traffic.length > 1
@@ -198,20 +265,35 @@ class Simulation {
         : [];
       t.update(this.road.borders, others);
     }
-    // Cull damaged traffic (rear-ends) so they don't pile up forever.
+    // Cull damaged traffic (rear-ends)
     this.traffic = this.traffic.filter((t) => !t.damaged);
 
-    // Update AI cars
+    // Update AI cars & safety telemetry
     for (const car of this.cars) {
       const wasDamaged = car.damaged;
       car.update(this.road.borders, this.traffic);
+
+      let m = this.carMetricsMap.get(car);
+      if (!m) {
+        m = this.safetyEvaluator.initCarMetrics(car, this.road);
+        this.carMetricsMap.set(car, m);
+      }
+      this.safetyEvaluator.updateCarMetrics(m, car, this.road, this.traffic);
+
+      // Compute dynamic fitness
+      if (this.options.algorithmMode === "evosafe") {
+        car._computedFitness = this.safetyEvaluator.computeSafetyFitness(car, m);
+      } else {
+        car._computedFitness = this.safetyEvaluator.computeBaselineFitness(car);
+      }
+
       if (!wasDamaged && car.damaged && !this.crashedFlags.has(car)) {
         this.crashedFlags.add(car);
         this.particles.burst(car.x, car.y, 14, "#ff7676");
       }
     }
 
-    // Pick best (alive cars first, then by fitness)
+    // Pick best (alive cars first, then by computed fitness)
     let best = this.cars[0];
     for (let i = 1; i < this.cars.length; i++) {
       const c = this.cars[i];
@@ -220,7 +302,9 @@ class Simulation {
         best = c;
         continue;
       }
-      if (c.fitness > best.fitness) best = c;
+      const cFit = c._computedFitness ?? c.fitness;
+      const bFit = best._computedFitness ?? best.fitness;
+      if (cFit > bFit) best = c;
     }
     this.bestCar = best;
 
@@ -233,34 +317,52 @@ class Simulation {
   }
 
   nextGeneration() {
+    // Assign effective fitness property for sorting
+    for (const car of this.cars) {
+      const m = this.carMetricsMap.get(car);
+      if (this.options.algorithmMode === "evosafe" && m) {
+        car._evalFitness = this.safetyEvaluator.computeSafetyFitness(car, m);
+      } else {
+        car._evalFitness = this.safetyEvaluator.computeBaselineFitness(car);
+      }
+    }
+
     let best = this.cars[0];
     let sum = 0;
     for (const c of this.cars) {
-      sum += c.fitness;
-      if (c.fitness > best.fitness) best = c;
+      const f = c._evalFitness;
+      sum += f;
+      if (f > best._evalFitness) best = c;
     }
-    this.bestFitnessThisGen = best.fitness;
+    this.bestFitnessThisGen = best._evalFitness;
     this.avgFitnessThisGen = sum / Math.max(1, this.cars.length);
 
-    // Auto-recovery: if 5 generations in a row produce best fitness < 1,
-    // the loaded brain is stuck (e.g. legacy / dead). Wipe and start fresh.
-    if (best.fitness < 1) {
-      this._zeroFitnessGens++;
-      if (this._zeroFitnessGens >= 5) {
+    // Extract genuine evaluation report
+    this.lastEvaluationReport = this.safetyEvaluator.extractEvaluationReport(
+      this.cars,
+      this.carMetricsMap
+    );
+
+    // Auto-recovery check
+    if (this.options.algorithmMode === "baseline") {
+      if (best._evalFitness < 1) {
+        this._zeroFitnessGens++;
+        if (this._zeroFitnessGens >= 5) {
+          this._zeroFitnessGens = 0;
+          Storage.remove(SIM_KEY_BRAIN);
+          Storage.remove(SIM_KEY_BEST_FITNESS);
+          this.bestEverBrain = null;
+          this.allTimeBestFitness = 0;
+          this.adaptiveMutation = this.options.mutationAmount;
+          this.plateauStreak = 0;
+        }
+      } else {
         this._zeroFitnessGens = 0;
-        Storage.remove(SIM_KEY_BRAIN);
-        Storage.remove(SIM_KEY_BEST_FITNESS);
-        this.bestEverBrain = null;
-        this.allTimeBestFitness = 0;
-        this.adaptiveMutation = this.options.mutationAmount;
-        this.plateauStreak = 0;
       }
-    } else {
-      this._zeroFitnessGens = 0;
     }
 
-    if (best.fitness > this.allTimeBestFitness) {
-      this.allTimeBestFitness = best.fitness;
+    if (best._evalFitness > this.allTimeBestFitness) {
+      this.allTimeBestFitness = best._evalFitness;
       this.bestEverBrain = NeuralNetwork.clone(best.brain);
       this.plateauStreak = 0;
       this.adaptiveMutation = this.options.mutationAmount;
@@ -277,22 +379,44 @@ class Simulation {
       }
     }
 
+    // Evolution step using configured EvolutionEngine
+    const evolutionResult = this.evolutionEngine.evolve(
+      this.cars.map((c) => ({
+        brain: c.brain,
+        fitness: c._evalFitness,
+        damaged: c.damaged,
+      })),
+      this.options.population,
+      this.bestEverBrain
+    );
+
+    this.currentDiversity = evolutionResult.diversity;
+
+    // Record generation in experiment tracker
+    this.experimentManager.recordGeneration({
+      generation: this.generation,
+      bestFitness: this.bestFitnessThisGen,
+      avgFitness: this.avgFitnessThisGen,
+      maxDistance: this.lastEvaluationReport.maxDistance,
+      avgDistance: this.lastEvaluationReport.avgDistance,
+      collisionRate: this.lastEvaluationReport.collisionRate,
+      avgSpeed: this.lastEvaluationReport.avgSpeed,
+      avgTTC: this.lastEvaluationReport.avgMinTTC,
+      nearMisses: this.lastEvaluationReport.avgNearMisses,
+      diversity: this.currentDiversity,
+    });
+
     this.generation++;
     Storage.set(SIM_KEY_GENERATION, this.generation);
 
-    const championBrain = this.bestEverBrain
-      ? NeuralNetwork.clone(this.bestEverBrain)
-      : NeuralNetwork.clone(best.brain);
-
-    // Build the new generation in a local array, then swap atomically so the
-    // draw loop never observes an empty / null-bestCar simulation.
+    // Build the new generation cars
     const nextCars = [];
     for (let i = 0; i < this.options.population; i++) {
       const car = this.#buildAICar(this.road.getLaneCenter(1), this.startY);
-      car.brain = NeuralNetwork.clone(championBrain);
-      if (i !== 0) NeuralNetwork.mutate(car.brain, this.adaptiveMutation);
+      car.brain = evolutionResult.brains[i] || NeuralNetwork.clone(best.brain);
       nextCars.push(car);
     }
+
     this.cars = nextCars;
     this.bestCar = nextCars[0];
     this.crashedFlags = new WeakSet();
@@ -315,11 +439,10 @@ class Simulation {
     this.bestEverBrain = null;
     this.adaptiveMutation = this.options.mutationAmount;
     this.plateauStreak = 0;
+    this.currentDiversity = 0;
   }
 
   loadBrain(brainData) {
-    // Validate architecture matches current ray count, else the network would
-    // emit NaN/0 outputs and every car would drive straight into walls.
     const requiredInputs = this.options.rayCount;
     const firstLevel = brainData?.levels?.[0];
     const brainInputs =
@@ -341,20 +464,33 @@ class Simulation {
     this.#initialTraffic();
     this.particles = new ParticleSystem();
     this.crashedFlags = new WeakSet();
+    this.experimentManager.startRun({
+      algorithm: this.options.algorithmMode,
+      scenario: this.options.scenarioId,
+      seed: this.options.seed,
+      population: this.options.population,
+    });
   }
 
   getStats() {
     const alive = this.cars.filter((c) => !c.damaged).length;
+    const rep = this.lastEvaluationReport;
     return {
       generation: this.generation,
       population: this.cars.length,
       alive,
-      bestFitness: this.bestCar ? this.bestCar.fitness : 0,
+      bestFitness: this.bestCar ? (this.bestCar._computedFitness ?? this.bestCar.fitness) : 0,
       allTimeBest: this.allTimeBestFitness,
       distance: this.bestCar ? this.bestCar.distanceTraveled : 0,
       speed: this.bestCar ? this.bestCar.speed : 0,
       mutation: this.adaptiveMutation,
       trafficCount: this.traffic.length,
+      algorithmMode: this.options.algorithmMode,
+      diversity: this.currentDiversity,
+      collisionRate: rep ? rep.collisionRate : (this.cars.length > 0 ? (this.cars.length - alive) / this.cars.length : 0),
+      avgTTC: rep ? rep.avgMinTTC : 0,
+      nearMisses: rep ? rep.avgNearMisses : 0,
+      scenarioName: this.scenarioManager.activeConfig.name,
     };
   }
 }

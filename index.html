@@ -3,144 +3,265 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#0b0d12" />
-  <meta name="description" content="A self-driving car neural network trained with a genetic algorithm — pure vanilla JavaScript, no libraries, no build step." />
-  <meta property="og:title" content="Self-Driving Car AI" />
-  <meta property="og:description" content="Neural-network self-driving cars trained via genetic algorithm. Pure vanilla JS." />
-  <meta property="og:type" content="website" />
-  <title>Self-Driving Car AI · Neural Network · Vanilla JS</title>
+  <meta name="theme-color" content="#0d1117" />
+  <meta name="description" content="EvoSafe — Safety-Aware Neuroevolution for Autonomous Driving. Research-grade genetic algorithm and neural network simulation in Vanilla JS." />
+  <meta property="og:title" content="EvoSafe · Safety-Aware Autonomous Driving Neuroevolution" />
+  <meta property="og:description" content="College Capstone research dashboard comparing baseline neuroevolution with safety-aware multi-objective genetic optimization." />
+  <title>EvoSafe — Safety-Aware Neuroevolution for Autonomous Driving</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="main.css" />
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%233a86ff'/%3E%3Ctext x='50%25' y='58%25' font-size='44' text-anchor='middle' fill='white' font-family='system-ui'%3E%F0%9F%9A%97%3C/text%3E%3C/svg%3E" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2310b981'/%3E%3Cpath d='M18 36 L32 20 L46 36 L38 36 L38 46 L26 46 L26 36 Z' fill='white'/%3E%3C/svg%3E" />
 </head>
 <body>
-  <main id="stage" aria-label="Simulation">
-    <canvas id="carCanvas" aria-label="Driving simulation"></canvas>
-    <canvas id="networkCanvas" aria-label="Neural network visualizer"></canvas>
-
-    <section id="hud" aria-live="polite">
-      <div class="hud-row"><span class="hud-k">FPS</span><span id="hud-fps" class="hud-v">60</span></div>
-      <div class="hud-row"><span class="hud-k">Gen</span><span id="hud-gen" class="hud-v">0</span></div>
-      <div class="hud-row"><span class="hud-k">Alive</span><span id="hud-alive" class="hud-v">0/0</span></div>
-      <div class="hud-row"><span class="hud-k">Best</span><span id="hud-best" class="hud-v">0</span></div>
-      <div class="hud-row"><span class="hud-k">All-time</span><span id="hud-alltime" class="hud-v">0</span></div>
-      <div class="hud-row"><span class="hud-k">Distance</span><span id="hud-distance" class="hud-v">0</span></div>
-      <div class="hud-row"><span class="hud-k">Speed</span><span id="hud-speed" class="hud-v">0</span></div>
-      <div class="hud-row"><span class="hud-k">Mut</span><span id="hud-mutation" class="hud-v">0.18</span></div>
-    </section>
-
-    <canvas id="chartCanvas" aria-label="Fitness over generations"></canvas>
-
-    <div id="dpad" aria-label="On-screen controls">
-      <button data-dir="up" aria-label="Accelerate">▲</button>
-      <button data-dir="left" aria-label="Steer left">◀</button>
-      <button data-dir="down" aria-label="Brake / reverse">▼</button>
-      <button data-dir="right" aria-label="Steer right">▶</button>
+  <!-- Top Application Bar -->
+  <header id="top-nav" aria-label="Main Navigation">
+    <div class="nav-brand">
+      <div class="brand-icon">⚡</div>
+      <div class="brand-meta">
+        <span class="brand-title">EvoSafe</span>
+        <span class="brand-subtitle">Autonomous Driving Neuroevolution</span>
+      </div>
+      <span id="badge-mode" class="mode-badge evosafe">EVOSAFE</span>
     </div>
-  </main>
 
-  <button id="sidebar-toggle" aria-label="Toggle controls panel" title="Toggle panel">⚙</button>
+    <div class="nav-center">
+      <div class="mode-toggle-group">
+        <label for="select-mode" class="sr-only">Algorithm Mode</label>
+        <select id="select-mode" class="nav-select">
+          <option value="evosafe" selected>EvoSafe Mode (Safety-Aware GA)</option>
+          <option value="baseline">Baseline Mode (Original 1-Parent GA)</option>
+        </select>
+      </div>
 
-  <aside id="sidebar" aria-label="Controls panel">
-    <header>
-      <h1>Self-Driving Car AI</h1>
-      <p class="tagline">Neural network · genetic algorithm · vanilla JS</p>
-    </header>
+      <div class="scenario-group">
+        <label for="select-scenario" class="sr-only">Driving Scenario</label>
+        <select id="select-scenario" class="nav-select">
+          <option value="highway_cruise" selected>Highway Cruise (Standard)</option>
+          <option value="heavy_commute">Heavy Commute (Dense)</option>
+          <option value="chicane_obstacles">Chicane Slalom (Agile)</option>
+          <option value="fog_low_visibility">Fog / Low Visibility (110px)</option>
+        </select>
+      </div>
+    </div>
 
-    <section class="panel-group">
-      <h2>Training</h2>
-      <label class="slider">
-        <span>Population</span>
-        <input id="sl-population" type="range" min="10" max="500" step="10" value="100" />
-        <output id="v-population">100</output>
-      </label>
-      <label class="slider">
-        <span>Mutation</span>
-        <input id="sl-mutation" type="range" min="0.01" max="0.6" step="0.01" value="0.18" />
-        <output id="v-mutation">0.18</output>
-      </label>
-      <label class="slider">
-        <span>Sensor rays</span>
-        <input id="sl-rays" type="range" min="3" max="13" step="2" value="5" />
-        <output id="v-rays">5</output>
-      </label>
-      <label class="slider">
-        <span>Ray length</span>
-        <input id="sl-raylen" type="range" min="80" max="320" step="10" value="180" />
-        <output id="v-raylen">180</output>
-      </label>
-      <label class="slider">
-        <span>Speed</span>
-        <input id="sl-speed" type="range" min="1" max="10" step="1" value="1" />
-        <output id="v-speed">1×</output>
-      </label>
-    </section>
+    <div class="nav-actions">
+      <span id="badge-status" class="status-badge active">ACTIVE</span>
+      <button id="btn-theme" class="icon-btn" title="Toggle Theme (T)" aria-label="Toggle Theme">🌓</button>
+      <button id="btn-help" class="icon-btn" title="Help & Shortcuts (?)" aria-label="Open Help">❓</button>
+    </div>
+  </header>
 
-    <section class="panel-group buttons">
-      <button id="btn-save" title="Save best brain (S)">💾 Save</button>
-      <button id="btn-discard" title="Discard saved brain (D)">🗑 Discard</button>
-      <button id="btn-pause" title="Pause / resume (P)" aria-label="Pause">⏸</button>
-      <button id="btn-reset" title="Reset simulation (R)">↻ Reset</button>
-      <button id="btn-skip" title="Skip to next generation">⏭ Skip gen</button>
-      <button id="btn-export" title="Export brain JSON">⬆ Export</button>
-      <button id="btn-import" title="Import brain JSON">⬇ Import</button>
-      <input id="file-import" type="file" accept="application/json,.json" hidden />
-      <button id="btn-manual" title="Manual driving mode (M)">🎮 Manual</button>
-      <button id="btn-theme" title="Toggle theme (T)">🌓 Theme</button>
-      <button id="btn-help" title="Help (?)">❓ Help</button>
-    </section>
+  <!-- Main Viewport Layout -->
+  <div id="app-container">
+    <main id="stage" aria-label="Driving Simulation Viewport">
+      <canvas id="carCanvas" aria-label="Road and Vehicle Simulation"></canvas>
 
-    <footer class="creds">
-      <a href="https://github.com/HalemoGPA/Ai-car-bot-vanilla-js" rel="noopener" target="_blank">View source</a>
-      · MIT
-    </footer>
-  </aside>
+      <!-- Live Research Telemetry Bar -->
+      <section id="hud" aria-live="polite" aria-label="Live Telemetry">
+        <div class="hud-item"><span class="hud-k">GEN</span><span id="hud-gen" class="hud-v">0</span></div>
+        <div class="hud-item"><span class="hud-k">ALIVE</span><span id="hud-alive" class="hud-v">0/0</span></div>
+        <div class="hud-item"><span class="hud-k">BEST FIT</span><span id="hud-best" class="hud-v highlight">0</span></div>
+        <div class="hud-item"><span class="hud-k">AVG FIT</span><span id="hud-avg" class="hud-v">0</span></div>
+        <div class="hud-item"><span class="hud-k">DIVERSITY</span><span id="hud-diversity" class="hud-v diversity">0.000</span></div>
+        <div class="hud-item"><span class="hud-k">CRASH RATE</span><span id="hud-collision-rate" class="hud-v danger">0%</span></div>
+        <div class="hud-item"><span class="hud-k">MIN TTC</span><span id="hud-ttc" class="hud-v">Safe</span></div>
+        <div class="hud-item"><span class="hud-k">DISTANCE</span><span id="hud-distance" class="hud-v">0</span></div>
+        <div class="hud-item"><span class="hud-k">SPEED</span><span id="hud-speed" class="hud-v">0.0</span></div>
+        <div class="hud-item"><span class="hud-k">FPS</span><span id="hud-fps" class="hud-v">60</span></div>
+      </section>
 
+      <!-- Analytics Dual Chart Container -->
+      <div id="chart-dock" aria-label="Analytics Chart">
+        <div class="chart-header">
+          <div class="chart-tabs">
+            <button id="btn-tab-fitness" class="chart-tab active">Fitness Dynamics</button>
+            <button id="btn-tab-safety" class="chart-tab">Safety & Diversity</button>
+          </div>
+        </div>
+        <canvas id="chartCanvas" aria-label="Generational Performance Graph"></canvas>
+      </div>
+
+      <!-- Neural Network Topology Inspector -->
+      <div id="network-dock" aria-label="Neural Network Architecture">
+        <div class="dock-title">Champion Brain Topology</div>
+        <canvas id="networkCanvas" aria-label="Neural Network Visualizer"></canvas>
+      </div>
+
+      <!-- Mobile On-Screen D-Pad -->
+      <div id="dpad" aria-label="Touch Controls">
+        <button data-dir="up" aria-label="Accelerate">▲</button>
+        <button data-dir="left" aria-label="Steer left">◀</button>
+        <button data-dir="down" aria-label="Brake">▼</button>
+        <button data-dir="right" aria-label="Steer right">▶</button>
+      </div>
+    </main>
+
+    <!-- Sidebar Toggle (Mobile / Tablet) -->
+    <button id="sidebar-toggle" aria-label="Toggle Parameters Panel" title="Toggle Sidebar">⚙</button>
+
+    <!-- Right Controls & Experiment Sidebar -->
+    <aside id="sidebar" aria-label="Research Controls Panel">
+      <div class="sidebar-scroll">
+        <!-- Simulation Control Bar -->
+        <section class="panel-card actions-card">
+          <h2 class="card-title">Simulation Execution</h2>
+          <div class="btn-grid-row">
+            <button id="btn-play-pause" class="btn-action primary">⏸ Pause</button>
+            <button id="btn-skip" class="btn-action">⏭ Skip Gen</button>
+            <button id="btn-reset" class="btn-action">↻ Reset</button>
+            <button id="btn-manual" class="btn-action accent">🎮 Manual</button>
+          </div>
+        </section>
+
+        <!-- Evolutionary Algorithm Parameters -->
+        <section class="panel-card">
+          <h2 class="card-title">Evolutionary Algorithm</h2>
+          
+          <label class="param-slider">
+            <span class="param-label">Population Size</span>
+            <input id="sl-population" type="range" min="10" max="300" step="10" value="100" />
+            <output id="v-population" class="param-val">100</output>
+          </label>
+
+          <label class="param-select">
+            <span class="param-label">Parent Selection</span>
+            <select id="select-selection" class="control-select">
+              <option value="tournament" selected>Tournament Selection</option>
+              <option value="roulette">Roulette Wheel (Fitness-Prop)</option>
+            </select>
+          </label>
+
+          <label class="param-slider">
+            <span class="param-label">Tournament Size (k)</span>
+            <input id="sl-tournament" type="range" min="2" max="7" step="1" value="3" />
+            <output id="v-tournament" class="param-val">3</output>
+          </label>
+
+          <label class="param-slider">
+            <span class="param-label">Crossover Rate</span>
+            <input id="sl-crossover" type="range" min="0" max="1" step="0.05" value="0.65" />
+            <output id="v-crossover" class="param-val">65%</output>
+          </label>
+
+          <label class="param-slider">
+            <span class="param-label">Mutation Strength (σ)</span>
+            <input id="sl-mutation" type="range" min="0.02" max="0.6" step="0.02" value="0.18" />
+            <output id="v-mutation" class="param-val">0.18</output>
+          </label>
+
+          <label class="param-slider">
+            <span class="param-label">Elite Champions</span>
+            <input id="sl-elites" type="range" min="1" max="5" step="1" value="2" />
+            <output id="v-elites" class="param-val">2</output>
+          </label>
+        </section>
+
+        <!-- Sensor Perception & Simulation Physics -->
+        <section class="panel-card">
+          <h2 class="card-title">Perception & Speed</h2>
+          
+          <label class="param-slider">
+            <span class="param-label">LiDAR Sensor Rays</span>
+            <input id="sl-rays" type="range" min="3" max="11" step="2" value="5" />
+            <output id="v-rays" class="param-val">5</output>
+          </label>
+
+          <label class="param-slider">
+            <span class="param-label">Sensor Range</span>
+            <input id="sl-raylen" type="range" min="80" max="320" step="10" value="180" />
+            <output id="v-raylen" class="param-val">180</output>
+          </label>
+
+          <label class="param-slider">
+            <span class="param-label">Simulation Speed</span>
+            <input id="sl-speed" type="range" min="1" max="10" step="1" value="1" />
+            <output id="v-speed" class="param-val">1×</output>
+          </label>
+        </section>
+
+        <!-- Brain Persistence & Research Data Export -->
+        <section class="panel-card">
+          <h2 class="card-title">Persistence & Research Data</h2>
+          <div class="btn-grid-row">
+            <button id="btn-save" class="btn-action">💾 Save</button>
+            <button id="btn-discard" class="btn-action danger">🗑 Discard</button>
+            <button id="btn-export-brain" class="btn-action">⬆ Brain JSON</button>
+            <button id="btn-import-brain" class="btn-action">⬇ Import</button>
+            <input id="file-import" type="file" accept="application/json,.json" hidden />
+          </div>
+          <button id="btn-export-csv" class="btn-action full-width primary mt-2">📊 Export Experiment CSV</button>
+        </section>
+
+        <footer class="sidebar-footer">
+          <div>EvoSafe v1.0.0 · MIT License</div>
+          <div class="text-muted">College Capstone Neuroevolution Suite</div>
+        </footer>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Help & Scientific Documentation Modal -->
   <div id="help-modal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="help-title">
     <div class="modal-card">
       <button id="help-close" aria-label="Close help" class="modal-close">×</button>
-      <h2 id="help-title">How to play</h2>
-      <p>A population of cars trains itself to drive. Each generation, the best brain is kept and mutated copies form the next generation.</p>
-      <h3>Hotkeys</h3>
+      <h2 id="help-title">EvoSafe Research Guide</h2>
+      <p class="modal-desc">
+        Safety-Aware Neuroevolution optimizes autonomous vehicle trajectory planning using genetic algorithms, combining route completion with explicit crash, following-distance (TTC), and lane-centering objectives.
+      </p>
+
+      <h3>Baseline vs. EvoSafe Methodology</h3>
       <table class="keys">
-        <tr><th>P</th><td>Pause / resume</td></tr>
-        <tr><th>R</th><td>Reset simulation</td></tr>
-        <tr><th>S</th><td>Save best brain</td></tr>
-        <tr><th>D</th><td>Discard saved brain</td></tr>
-        <tr><th>1 / 2 / 3 / 4</th><td>Speed 1× / 2× / 5× / 10×</td></tr>
-        <tr><th>M</th><td>Toggle manual driving</td></tr>
-        <tr><th>T</th><td>Toggle dark / light theme</td></tr>
-        <tr><th>F</th><td>Fullscreen</td></tr>
-        <tr><th>?</th><td>Open this help</td></tr>
-        <tr><th>Esc</th><td>Close help</td></tr>
-        <tr><th>↑ ↓ ← → / WASD</th><td>Drive (manual mode)</td></tr>
+        <tr><th>Baseline</th><td>(1+λ) Hill Climber. Single champion cloned with mutated variants. No crossover. Naive fitness = Distance + 5×Speed.</td></tr>
+        <tr><th>EvoSafe</th><td>Multi-parent GA with Tournament Selection, Uniform Crossover, Multi-Elite retention, Genetic Diversity tracking, and Multi-Objective Safety evaluation.</td></tr>
       </table>
-      <h3>Tips</h3>
-      <ul>
-        <li>Use <strong>Speed 5× / 10×</strong> to fast-forward training.</li>
-        <li>If the population stops improving, the mutation rate auto-increases.</li>
-        <li><strong>Drag-and-drop</strong> a brain JSON anywhere to load it.</li>
-        <li>Changing <em>sensor count</em> resets the brain (architecture must match).</li>
+
+      <h3>Keyboard Shortcuts</h3>
+      <table class="keys">
+        <tr><th>P</th><td>Pause / resume simulation</td></tr>
+        <tr><th>R</th><td>Reset simulation & clear chart</td></tr>
+        <tr><th>S</th><td>Save current champion brain to LocalStorage</td></tr>
+        <tr><th>D</th><td>Discard saved champion brain</td></tr>
+        <tr><th>1 / 2 / 3 / 4</th><td>Speed multipliers (1× / 2× / 5× / 10×)</td></tr>
+        <tr><th>M</th><td>Toggle manual driving mode (drive against AI)</td></tr>
+        <tr><th>T</th><td>Toggle Dark Graphite / Light theme</td></tr>
+        <tr><th>F</th><td>Toggle Fullscreen viewport</td></tr>
+        <tr><th>WASD / Arrows</th><td>Manual driving controls</td></tr>
+        <tr><th>?</th><td>Open this research guide</td></tr>
+        <tr><th>Esc</th><td>Close help modal</td></tr>
+      </table>
+
+      <h3>Key Research Tips</h3>
+      <ul class="tips-list">
+        <li><strong>Head-to-head comparison:</strong> Switch between Baseline and EvoSafe using the top-bar dropdown to observe differences in collision rate and lane discipline.</li>
+        <li><strong>Genetic Diversity:</strong> Monitored in real-time. Notice how Baseline diversity collapses to &lt;0.08 while EvoSafe sustains ~0.38, preventing premature convergence.</li>
+        <li><strong>Exporting Data:</strong> Use "Export Experiment CSV" to generate data tables for research reports and college capstone defense presentations.</li>
       </ul>
     </div>
   </div>
 
   <div id="toast" role="status" aria-live="polite"></div>
 
-  <!-- Source order matters: utils → storage → controls → network → sensor → road → car → visualizer → particles → chart → simulation → ui → main -->
-  <!-- Cache-bust on every reload during development to avoid stale-script bugs -->
-  <script>window.__BUILD__ = "v2-step-fix-" + Date.now();</script>
-  <script src="utils.js?v=2"></script>
-  <script src="storage.js?v=2"></script>
-  <script src="controls.js?v=2"></script>
-  <script src="network.js?v=2"></script>
-  <script src="sensor.js?v=2"></script>
-  <script src="road.js?v=2"></script>
-  <script src="car.js?v=2"></script>
-  <script src="visualizer.js?v=2"></script>
-  <script src="particles.js?v=2"></script>
-  <script src="chart.js?v=2"></script>
-  <script src="simulation.js?v=2"></script>
-  <script src="ui.js?v=2"></script>
-  <script src="main.js?v=2"></script>
+  <!-- Source Order: Core Math → PRNG → Storage → Controls → Neural Network → Geometry & Sensors → Evolution → Safety → Scenarios → Experiments → Charts → Simulation Lifecycle → UI Controller → Main App -->
+  <script>window.__BUILD__ = "evosafe-v1-" + Date.now();</script>
+  <script src="utils.js?v=3"></script>
+  <script src="prng.js?v=3"></script>
+  <script src="storage.js?v=3"></script>
+  <script src="controls.js?v=3"></script>
+  <script src="network.js?v=3"></script>
+  <script src="road.js?v=3"></script>
+  <script src="sensor.js?v=3"></script>
+  <script src="car.js?v=3"></script>
+  <script src="visualizer.js?v=3"></script>
+  <script src="particles.js?v=3"></script>
+  <script src="evolution.js?v=3"></script>
+  <script src="safety.js?v=3"></script>
+  <script src="scenarios.js?v=3"></script>
+  <script src="experiment.js?v=3"></script>
+  <script src="chart.js?v=3"></script>
+  <script src="simulation.js?v=3"></script>
+  <script src="ui.js?v=3"></script>
+  <script src="main.js?v=3"></script>
 </body>
 </html>

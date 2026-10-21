@@ -1,0 +1,20 @@
+{
+  "name": "evosafe-autonomous-driving",
+  "version": "1.0.0",
+  "description": "EvoSafe — Safety-Aware Neuroevolution for Autonomous Driving",
+  "type": "module",
+  "scripts": {
+    "start": "node serve.js",
+    "test": "node test/suite.js",
+    "bench": "node test/benchmark.js"
+  },
+  "keywords": [
+    "neuroevolution",
+    "autonomous-driving",
+    "genetic-algorithm",
+    "safety-aware",
+    "simulation"
+  ],
+  "author": "EvoSafe Research Team",
+  "license": "MIT"
+}
