@@ -17,14 +17,17 @@ EvoSafe transforms baseline self-driving car simulations into a research-oriente
    - Maintains sustained genetic diversity ($\mathcal{D} = 0.3785$ vs. $0.0727$ in baseline), combating premature convergence.
 2. **Safety-Aware Multi-Objective Fitness:**
    - Incorporates forward distance, velocity smoothness, Time-to-Collision (TTC), near-miss frequency, and lane-centering error into optimization criteria.
-3. **Repeatable Scenario Generator:**
+3. **ADAS Level 2 Telemetry & Neural Actuator Cockpit:**
+   - Live **Forward Collision Warning (FCW)**, **Lane Departure Warning (LDW)**, and real-time neural actuator state monitors (`[ACCEL]`, `[STEER L]`, `[STEER R]`, `[BRAKE]`).
+4. **Repeatable Scenario Generator:**
    - Deterministic PRNG seeding (Mulberry32) for reproducible evaluation across difficulty presets: *Highway Cruise*, *Heavy Commute*, *Chicane Slalom*, and *Fog/Low Visibility*.
-4. **Research Dashboard & Dual Canvas Analytics:**
-   - Real-time generational charts tracking Fitness Dynamics alongside Safety & Diversity curves.
-   - Live telemetry HUD displaying FPS, Alive count, Collision Rate, and Est. TTC.
-5. **Head-to-Head Baseline vs. EvoSafe Toggle:**
-   - Allows instant live switching between the original baseline algorithm and the proposed EvoSafe algorithm without restarting.
-6. **Zero-Dependency Automated Test Harness:**
+5. **Interactive Academic Capstone Defense Suite (`🎓`):**
+   - Built-in university jury evaluation modal featuring problem formulation, empirical benchmark scorecards, ablation analysis, examiner viva questions, and printable reports.
+6. **Live In-Browser Head-to-Head Jury Benchmark:**
+   - 1-click comparative benchmarking between Baseline and EvoSafe executing directly in the client under identical PRNG seeds with zero terminal dependency.
+7. **Standalone Model Evaluation & Transfer:**
+   - Rich JSON export/import of trained champion brains with automatic parameter alignment and zero-mutation deterministic testing.
+8. **Zero-Dependency Automated Test Harness:**
    - Complete 19-test suite and headless benchmark runner executing in standard Node.js without external frameworks.
 
 ---
@@ -72,7 +75,8 @@ npm start
 | **`R`** | Reset simulation and charts | **`M`** | Toggle Manual Driving Mode |
 | **`S`** | Save current champion brain | **`T`** | Toggle Dark Graphite / Light Theme |
 | **`D`** | Discard saved brain | **`F`** | Toggle Fullscreen |
-| **`WASD / Arrows`** | Drive vehicle in manual mode | **`?`** | Open Help & Research Guide Modal |
+| **`C`** | Open Capstone Defense & Viva Modal | **`?`** | Open Help & Research Guide Modal |
+| **`WASD / Arrows`** | Drive vehicle in manual mode | **`Esc`** | Close open modals |
 
 ---
 

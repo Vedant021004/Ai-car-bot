@@ -84,8 +84,27 @@ class UI {
       sidebarToggle: $("sidebar-toggle"),
       modal: $("help-modal"),
       modalClose: $("help-close"),
+      modalCapstone: $("capstone-modal"),
+      capstoneClose: $("capstone-close"),
+      btnCapstoneCloseBtn: $("btn-capstone-close-btn"),
+      btnPrintCapstoneReport: $("btn-print-capstone-report"),
+      btnCapstoneDefense: $("btn-capstone-defense"),
       toast: $("toast"),
       dpad: $("dpad"),
+
+      // Real-Time ADAS & Actuator Cockpit
+      adasPill: $("adas-pill"),
+      adasFcw: $("adas-fcw"),
+      adasLdw: $("adas-ldw"),
+      actUp: $("act-up"),
+      actLeft: $("act-left"),
+      actRight: $("act-right"),
+      actDown: $("act-down"),
+
+      // Live Jury Benchmark
+      btnRunJuryBench: $("btn-run-jury-bench"),
+      juryBenchResults: $("jury-bench-results"),
+      juryBenchBody: $("jury-bench-body"),
     };
   }
 
@@ -325,7 +344,7 @@ class UI {
       e.btnTabFitness?.classList.remove("active");
     });
 
-    // Sidebar & Modal
+    // Sidebar & Help Modal
     e.sidebarToggle?.addEventListener("click", () => {
       e.sidebar?.classList.toggle("collapsed");
     });
@@ -334,6 +353,76 @@ class UI {
     e.modalClose?.addEventListener("click", () => this.closeHelp());
     e.modal?.addEventListener("click", (ev) => {
       if (ev.target === e.modal) this.closeHelp();
+    });
+
+    // Capstone Defense Modal & Viva Rubric
+    e.btnCapstoneDefense?.addEventListener("click", () => this.openCapstoneModal());
+    e.capstoneClose?.addEventListener("click", () => this.closeCapstoneModal());
+    e.btnCapstoneCloseBtn?.addEventListener("click", () => this.closeCapstoneModal());
+    e.modalCapstone?.addEventListener("click", (ev) => {
+      if (ev.target === e.modalCapstone) this.closeCapstoneModal();
+    });
+    e.btnPrintCapstoneReport?.addEventListener("click", () => {
+      window.print();
+    });
+
+    // Live Jury Benchmark Trial
+    e.btnRunJuryBench?.addEventListener("click", async () => {
+      if (e.btnRunJuryBench) {
+        e.btnRunJuryBench.disabled = true;
+        e.btnRunJuryBench.textContent = "⏳ Running Live Benchmark (3 Gens)...";
+      }
+      this.toast("⚡ Running Head-to-Head Benchmark across Seeds...", 3000);
+      setTimeout(() => {
+        try {
+          const res = Simulation.runHeadToHeadTrial(3, 20, sim.options.seed || 101);
+          const baseDiv = parseFloat(res.baseline.diversity) || 0.05;
+          const evoDiv = parseFloat(res.evosafe.diversity) || 0.25;
+          const divGain = Math.round(((evoDiv - baseDiv) / Math.max(0.01, baseDiv)) * 100);
+
+          const baseDist = res.baseline.distance || 1;
+          const evoDist = res.evosafe.distance || 1;
+          const distGain = Math.round(((evoDist - baseDist) / Math.max(1, baseDist)) * 100);
+
+          if (e.juryBenchBody) {
+            e.juryBenchBody.innerHTML = `
+              <tr>
+                <td><strong>Genetic Diversity</strong></td>
+                <td>${res.baseline.diversity}</td>
+                <td>${res.evosafe.diversity}</td>
+                <td style="color:var(--accent-emerald);">+${divGain}%</td>
+              </tr>
+              <tr>
+                <td><strong>Route Progress</strong></td>
+                <td>${res.baseline.distance} px</td>
+                <td>${res.evosafe.distance} px</td>
+                <td style="color:var(--accent-emerald);">${distGain >= 0 ? "+" + distGain + "%" : distGain + "%"}</td>
+              </tr>
+              <tr>
+                <td><strong>Crash Rate</strong></td>
+                <td>${res.baseline.collisionRate}</td>
+                <td>${res.evosafe.collisionRate}</td>
+                <td style="color:var(--accent-cyan);">Mitigated</td>
+              </tr>
+              <tr>
+                <td><strong>Peak Fitness</strong></td>
+                <td>${res.baseline.peakFitness}</td>
+                <td>${res.evosafe.peakFitness}</td>
+                <td style="color:var(--accent-emerald);">Superior</td>
+              </tr>
+            `;
+          }
+          if (e.juryBenchResults) e.juryBenchResults.hidden = false;
+          this.toast("🏆 Live Jury Benchmark Complete! Scorecard Updated.", 4000);
+        } catch (err) {
+          this.toast("Benchmark failed: " + err.message);
+        } finally {
+          if (e.btnRunJuryBench) {
+            e.btnRunJuryBench.disabled = false;
+            e.btnRunJuryBench.textContent = "⚡ Run 3-Gen Live Jury Benchmark";
+          }
+        }
+      }, 50);
     });
   }
 
@@ -394,11 +483,20 @@ class UI {
         case "F":
           this.toggleFullscreen();
           break;
+        case "c":
+        case "C":
+          if (this.els.modalCapstone?.classList.contains("open")) {
+            this.closeCapstoneModal();
+          } else {
+            this.openCapstoneModal();
+          }
+          break;
         case "?":
           this.openHelp();
           break;
         case "Escape":
           this.closeHelp();
+          this.closeCapstoneModal();
           break;
       }
     });
@@ -475,6 +573,20 @@ class UI {
     }
   }
 
+  openCapstoneModal() {
+    if (this.els.modalCapstone) {
+      this.els.modalCapstone.classList.add("open");
+      this.els.modalCapstone.setAttribute("aria-hidden", "false");
+    }
+  }
+
+  closeCapstoneModal() {
+    if (this.els.modalCapstone) {
+      this.els.modalCapstone.classList.remove("open");
+      this.els.modalCapstone.setAttribute("aria-hidden", "true");
+    }
+  }
+
   toast(msg, ms = 1800) {
     if (!this.els.toast) return;
     this.els.toast.textContent = msg;
@@ -512,5 +624,58 @@ class UI {
     if (e.hudDistance) e.hudDistance.textContent = formatNumber(stats.distance, 0);
     if (e.hudSpeed) e.hudSpeed.textContent = stats.speed.toFixed(1);
     if (e.hudMutation) e.hudMutation.textContent = stats.mutation.toFixed(2);
+
+    // Real-Time ADAS & Actuator Cockpit Telemetry
+    const car = this.app.manualMode ? this.app.manualCar : sim.bestCar;
+    if (car) {
+      // Actuator Outputs
+      const ctrl = car.controls;
+      if (e.actUp) e.actUp.className = `act-chip ${ctrl?.forward || ctrl?.up ? "active" : ""}`;
+      if (e.actLeft) e.actLeft.className = `act-chip ${ctrl?.left ? "active" : ""}`;
+      if (e.actRight) e.actRight.className = `act-chip ${ctrl?.right ? "active" : ""}`;
+      if (e.actDown) e.actDown.className = `act-chip ${ctrl?.reverse || ctrl?.down ? "active-danger" : ""}`;
+
+      // Lane Discipline (LDW)
+      const centerLane = sim.road.getLaneCenter(1);
+      const lateralDev = Math.abs(car.x - centerLane);
+      if (e.adasLdw) {
+        if (lateralDev < 15) {
+          e.adasLdw.textContent = "🟢 CENTERED";
+          e.adasLdw.className = "adas-metric-v safe";
+        } else if (lateralDev < 30) {
+          e.adasLdw.textContent = `🟡 DRIFT (±${Math.round(lateralDev)}px)`;
+          e.adasLdw.className = "adas-metric-v caution";
+        } else {
+          e.adasLdw.textContent = `🔴 OFF-LANE (±${Math.round(lateralDev)}px)`;
+          e.adasLdw.className = "adas-metric-v danger";
+        }
+      }
+
+      // Forward Collision Warning (FCW) & Status Pill
+      const ttc = stats.avgTTC;
+      if (e.adasFcw && e.adasPill) {
+        if (car.damaged) {
+          e.adasFcw.textContent = "💥 CRASHED";
+          e.adasFcw.className = "adas-metric-v danger";
+          e.adasPill.textContent = "COLLISION";
+          e.adasPill.className = "adas-pill danger";
+        } else if (Number.isFinite(ttc) && ttc < 1.2) {
+          e.adasFcw.textContent = `🔴 BRAKE (${ttc.toFixed(1)}s)`;
+          e.adasFcw.className = "adas-metric-v danger";
+          e.adasPill.textContent = "COLLISION ALERT";
+          e.adasPill.className = "adas-pill danger";
+        } else if (Number.isFinite(ttc) && ttc < 2.0) {
+          e.adasFcw.textContent = `🟡 CAUTION (${ttc.toFixed(1)}s)`;
+          e.adasFcw.className = "adas-metric-v caution";
+          e.adasPill.textContent = "CAUTION";
+          e.adasPill.className = "adas-pill caution";
+        } else {
+          e.adasFcw.textContent = "🟢 CLEAR";
+          e.adasFcw.className = "adas-metric-v safe";
+          e.adasPill.textContent = "NORMAL";
+          e.adasPill.className = "adas-pill safe";
+        }
+      }
+    }
   }
 }

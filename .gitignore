@@ -6,3 +6,7 @@ node_modules/
 *.log
 .idea/
 .vscode/
+Thumbs.db
+*.tmp
+*.bak
+.system_generated/

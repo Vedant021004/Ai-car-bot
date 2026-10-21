@@ -642,4 +642,52 @@ class Simulation {
       scenarioName: this.scenarioManager.activeConfig.name,
     };
   }
+
+  /**
+   * Run a fast headless comparative benchmark between Baseline and EvoSafe
+   * using isolated simulation instances on identical seed.
+   */
+  static runHeadToHeadTrial(generations = 3, population = 20, seed = 101) {
+    function simulateMode(mode) {
+      const road = new Road(0, 220, 3);
+      const sim = new Simulation(road, {
+        population,
+        algorithmMode: mode,
+        seed,
+      });
+
+      let totalDiv = 0;
+      let finalDistance = 0;
+      let finalCollisionRate = 0;
+      let peakFitness = 0;
+
+      for (let g = 0; g < generations; g++) {
+        let steps = 0;
+        while (!sim.isBatchDone() && steps < 220) {
+          sim.step();
+          steps++;
+        }
+        if (!sim.isBatchDone()) {
+          for (const c of sim.cars) c.damaged = true;
+        }
+        sim.nextGeneration();
+        const s = sim.getStats();
+        totalDiv += (s.diversity || 0);
+        finalDistance = s.distance;
+        finalCollisionRate = s.collisionRate;
+        peakFitness = Math.max(peakFitness, s.bestFitness);
+      }
+
+      return {
+        diversity: (totalDiv / generations).toFixed(3),
+        distance: Math.round(finalDistance),
+        collisionRate: Math.round(finalCollisionRate * 100) + "%",
+        peakFitness: Math.round(peakFitness),
+      };
+    }
+
+    const baseline = simulateMode("baseline");
+    const evosafe = simulateMode("evosafe");
+    return { baseline, evosafe };
+  }
 }

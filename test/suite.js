@@ -426,6 +426,17 @@ describe("Integrated Simulation & Mode Isolation", () => {
     assert(Number.isFinite(stats.diversity), "Diversity metric must be available");
     assert(Number.isFinite(stats.collisionRate), "Collision rate must be computed");
   });
+
+  test("Head-to-head live benchmark trial generates empirical comparison scorecard", () => {
+    ctx.localStorage.clear();
+    const result = ctx.Simulation.runHeadToHeadTrial(2, 10, 101);
+    assert(result.baseline != null, "Baseline result must exist");
+    assert(result.evosafe != null, "EvoSafe result must exist");
+    assert(result.baseline.diversity != null, "Baseline diversity must be present");
+    assert(result.evosafe.diversity != null, "EvoSafe diversity must be present");
+    assert(result.baseline.collisionRate != null, "Baseline collision rate must be present");
+    assert(result.evosafe.collisionRate != null, "EvoSafe collision rate must be present");
+  });
 });
 
 summarize();
