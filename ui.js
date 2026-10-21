@@ -71,6 +71,7 @@ class UI {
       btnManual: $("btn-manual"),
       btnSave: $("btn-save"),
       btnDiscard: $("btn-discard"),
+      btnSeedExpert: $("btn-seed-expert"),
       btnExportBrain: $("btn-export-brain"),
       btnImportBrain: $("btn-import-brain"),
       fileImport: $("file-import"),
@@ -329,7 +330,13 @@ class UI {
       sim.discardBestBrain();
       sim.reset();
       this.app.chart.reset();
-      this.toast("Champion brain discarded 🗑");
+      this.#syncControlsFromOptions();
+      this.toast("🎲 Reset to Gen 0: Random Exploration! Cars drive randomly, then learn across generations.", 4000);
+    });
+    e.btnSeedExpert?.addEventListener("click", () => {
+      sim.loadExpertSeed();
+      this.#syncControlsFromOptions();
+      this.toast("⚡ Loaded Pre-Trained Champion Brain!", 3000);
     });
     e.btnExportBrain?.addEventListener("click", () => {
       const ok = sim.exportBrainFile("evosafe-champion-brain.json");
@@ -687,8 +694,10 @@ class UI {
         e.hudPolicy.textContent = `🔬 Benchmark (Frozen)`;
       } else if (sim.loadedBrainFilename) {
         e.hudPolicy.textContent = `🧬 ${sim.loadedBrainFilename.replace(/^.*[\\\/]/, '')}`;
+      } else if (sim.generation === 0 && !sim.bestEverBrain) {
+        e.hudPolicy.textContent = "🎲 Gen 0: Random Exploration";
       } else {
-        e.hudPolicy.textContent = sim.generation > 0 ? "🧬 GA Evolved" : "Expert Seed";
+        e.hudPolicy.textContent = `🧬 Gen ${sim.generation}: Active GA Learning`;
       }
     }
     if (e.hudFps) e.hudFps.textContent = fps.toFixed(0);

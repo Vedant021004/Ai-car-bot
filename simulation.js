@@ -104,7 +104,7 @@ class Simulation {
 
     this.generation = Storage.get(SIM_KEY_GENERATION, 0) || 0;
     this.allTimeBestFitness = Storage.get(SIM_KEY_BEST_FITNESS, 0) || 0;
-    this.bestEverBrain = Storage.get(SIM_KEY_BRAIN, null) || NeuralNetwork.clone(DEFAULT_CHAMPION_BRAIN);
+    this.bestEverBrain = Storage.get(SIM_KEY_BRAIN, null); // starts null for true random exploration!
     this._zeroFitnessGens = 0;
     this.bestFitnessThisGen = 0;
     this.avgFitnessThisGen = 0;
@@ -491,7 +491,7 @@ class Simulation {
       }
     }
 
-    if (best._evalFitness > this.allTimeBestFitness) {
+    if (!this.bestEverBrain || best._evalFitness > this.allTimeBestFitness) {
       this.allTimeBestFitness = best._evalFitness;
       this.bestEverBrain = NeuralNetwork.clone(best.brain);
       this.plateauStreak = 0;
@@ -689,11 +689,19 @@ class Simulation {
     Storage.remove(SIM_KEY_GENERATION);
     this.allTimeBestFitness = 0;
     this.generation = 0;
-    this.bestEverBrain = NeuralNetwork.clone(DEFAULT_CHAMPION_BRAIN);
+    this.bestEverBrain = null; // pure random tabula rasa!
     this.loadedBrainFilename = null;
     this.adaptiveMutation = this.options.mutationAmount;
     this.plateauStreak = 0;
     this.currentDiversity = 0;
+  }
+
+  loadExpertSeed() {
+    this.bestEverBrain = NeuralNetwork.clone(DEFAULT_CHAMPION_BRAIN);
+    this.loadedBrainFilename = "expert-champion.json";
+    Storage.set(SIM_KEY_BRAIN, this.bestEverBrain);
+    Storage.set(SIM_KEY_BEST_FITNESS, 1500);
+    this.reset();
   }
 
   loadBrain(brainData, autoEvaluate = true) {
