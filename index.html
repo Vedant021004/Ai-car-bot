@@ -108,6 +108,39 @@
           <span class="adas-title">ADAS TELEMETRY · LEVEL 2</span>
           <span id="adas-pill" class="adas-pill safe">NORMAL</span>
         </div>
+
+        <!-- Cockpit Primary Gauges: Speed Arc & Steering Angle Dial -->
+        <div class="adas-cockpit-gauges">
+          <!-- Speedometer Dial -->
+          <div class="gauge-card">
+            <svg class="speedo-svg" viewBox="0 0 64 64">
+              <circle class="speedo-bg" cx="32" cy="32" r="25"></circle>
+              <circle id="speedo-arc" class="speedo-val" cx="32" cy="32" r="25" stroke-dasharray="157" stroke-dashoffset="157"></circle>
+            </svg>
+            <div class="speedo-readout">
+              <span id="cockpit-speed-val" class="speedo-number">0</span>
+              <span class="speedo-unit">KM/H</span>
+            </div>
+          </div>
+
+          <!-- Steering Angle Dial -->
+          <div class="gauge-card">
+            <div class="steer-dial-container">
+              <div id="steer-wheel-icon" class="steer-wheel">⎈</div>
+            </div>
+            <div class="steer-readout">
+              <span id="cockpit-steer-val" class="steer-number">0°</span>
+              <span class="steer-label">STEER</span>
+            </div>
+          </div>
+
+          <!-- Mini LiDAR Polar Radar Screen -->
+          <div class="gauge-card">
+            <canvas id="radarMiniCanvas" width="56" height="56" class="radar-mini-canvas"></canvas>
+            <span class="radar-label">LiDAR RADAR</span>
+          </div>
+        </div>
+
         <div class="adas-grid">
           <div class="adas-col">
             <span class="adas-metric-k">COLLISION WARNING (FCW)</span>
@@ -118,6 +151,7 @@
             <span id="adas-ldw" class="adas-metric-v safe">🟢 CENTERED</span>
           </div>
         </div>
+
         <div class="actuator-row">
           <span class="actuator-k">NEURAL ACTUATORS</span>
           <div class="actuator-chips">

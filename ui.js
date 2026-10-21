@@ -100,6 +100,11 @@ class UI {
       actLeft: $("act-left"),
       actRight: $("act-right"),
       actDown: $("act-down"),
+      cockpitSpeedVal: $("cockpit-speed-val"),
+      speedoArc: $("speedo-arc"),
+      steerWheelIcon: $("steer-wheel-icon"),
+      cockpitSteerVal: $("cockpit-steer-val"),
+      radarMiniCanvas: $("radarMiniCanvas"),
 
       // Live Jury Benchmark
       btnRunJuryBench: $("btn-run-jury-bench"),
@@ -628,6 +633,82 @@ class UI {
     // Real-Time ADAS & Actuator Cockpit Telemetry
     const car = this.app.manualMode ? this.app.manualCar : sim.bestCar;
     if (car) {
+      // Digital Speedometer Arc & Number
+      const speedKmh = Math.round(Math.abs(car.speed) * 18);
+      if (e.cockpitSpeedVal) e.cockpitSpeedVal.textContent = speedKmh;
+      if (e.speedoArc) {
+        const ratio = clamp(speedKmh / 90, 0, 1);
+        e.speedoArc.style.strokeDashoffset = (157 - ratio * 157).toString();
+        e.speedoArc.style.stroke = speedKmh > 70 ? "#ef4444" : (speedKmh > 40 ? "#38bdf8" : "#10b981");
+      }
+
+      // Steering Wheel Angle & Readout
+      const steerDeg = Math.round((-car.angle) * (180 / Math.PI) * 1.8);
+      if (e.steerWheelIcon) {
+        e.steerWheelIcon.style.transform = `rotate(${steerDeg}deg)`;
+      }
+      if (e.cockpitSteerVal) {
+        e.cockpitSteerVal.textContent = `${steerDeg >= 0 ? "+" : ""}${steerDeg}°`;
+        e.cockpitSteerVal.style.color = Math.abs(steerDeg) > 12 ? "#38bdf8" : "var(--text)";
+      }
+
+      // LiDAR Mini-Radar Display
+      if (e.radarMiniCanvas && car.sensor) {
+        const rc = e.radarMiniCanvas.getContext("2d");
+        if (rc) {
+          const rw = e.radarMiniCanvas.width;
+          const rh = e.radarMiniCanvas.height;
+          const cx = rw / 2;
+          const cy = rh / 2;
+
+          rc.clearRect(0, 0, rw, rh);
+
+          // Polar concentric circles
+          rc.strokeStyle = "rgba(56, 189, 248, 0.2)";
+          rc.lineWidth = 1;
+          rc.beginPath();
+          rc.arc(cx, cy, 8, 0, Math.PI * 2);
+          rc.arc(cx, cy, 16, 0, Math.PI * 2);
+          rc.arc(cx, cy, 25, 0, Math.PI * 2);
+          rc.stroke();
+
+          // Rotating radar sweep line
+          const sweepAngle = (performance.now() * 0.003) % (Math.PI * 2);
+          rc.strokeStyle = "rgba(56, 189, 248, 0.4)";
+          rc.lineWidth = 1.2;
+          rc.beginPath();
+          rc.moveTo(cx, cy);
+          rc.lineTo(cx + Math.cos(sweepAngle) * 25, cy + Math.sin(sweepAngle) * 25);
+          rc.stroke();
+
+          // Ego vehicle central beacon
+          rc.fillStyle = "#10b981";
+          rc.beginPath();
+          rc.arc(cx, cy, 2.5, 0, Math.PI * 2);
+          rc.fill();
+
+          // Obstacle blips from sensor readings
+          if (car.sensor.readings) {
+            for (let i = 0; i < car.sensor.readings.length; i++) {
+              const r = car.sensor.readings[i];
+              if (r) {
+                const spread = car.sensor.raySpread || Math.PI / 2;
+                const count = car.sensor.rayCount || 5;
+                const rayAngle = (i / (count - 1) - 0.5) * spread - Math.PI / 2;
+                const dist = (1 - r.offset) * 24;
+                const bx = cx + Math.cos(rayAngle) * dist;
+                const by = cy + Math.sin(rayAngle) * dist;
+
+                rc.fillStyle = r.offset > 0.7 ? "#ef4444" : "#f59e0b";
+                rc.beginPath();
+                rc.arc(bx, by, 2, 0, Math.PI * 2);
+                rc.fill();
+              }
+            }
+          }
+        }
+      }
+
       // Actuator Outputs
       const ctrl = car.controls;
       if (e.actUp) e.actUp.className = `act-chip ${ctrl?.forward || ctrl?.up ? "active" : ""}`;

@@ -67,3 +67,34 @@ function readCssVar(name, fallback = "#888") {
     .trim();
   return v || fallback;
 }
+
+function lightenColor(color, percent = 20) {
+  if (!color || typeof color !== "string") return "#ffffff";
+  if (color.startsWith("#")) {
+    let hex = color.slice(1);
+    if (hex.length === 3) hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+    const num = parseInt(hex, 16);
+    const amt = Math.round(2.55 * percent);
+    const R = Math.min(255, (num >> 16) + amt);
+    const G = Math.min(255, ((num >> 8) & 0x00ff) + amt);
+    const B = Math.min(255, (num & 0x0000ff) + amt);
+    return `rgb(${R},${G},${B})`;
+  }
+  return color;
+}
+
+function darkenColor(color, percent = 20) {
+  if (!color || typeof color !== "string") return "#000000";
+  if (color.startsWith("#")) {
+    let hex = color.slice(1);
+    if (hex.length === 3) hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+    const num = parseInt(hex, 16);
+    const amt = Math.round(2.55 * percent);
+    const R = Math.max(0, (num >> 16) - amt);
+    const G = Math.max(0, ((num >> 8) & 0x00ff) - amt);
+    const B = Math.max(0, (num & 0x0000ff) - amt);
+    return `rgb(${R},${G},${B})`;
+  }
+  return color;
+}
+

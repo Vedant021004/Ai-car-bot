@@ -421,6 +421,127 @@ html, body {
   100% { opacity: 1; }
 }
 
+/* Cockpit Gauges (Speedometer, Steering Dial, Mini-Radar) */
+.adas-cockpit-gauges {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px;
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 8px 6px;
+}
+
+.gauge-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.speedo-svg {
+  width: 52px;
+  height: 52px;
+  transform: rotate(-90deg);
+}
+
+.speedo-bg {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.08);
+  stroke-width: 5;
+}
+
+.speedo-val {
+  fill: none;
+  stroke: var(--accent-cyan);
+  stroke-width: 5;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.15s ease, stroke 0.2s ease;
+}
+
+.speedo-readout {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.speedo-number {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.speedo-unit {
+  font-size: 7.5px;
+  font-weight: 700;
+  color: var(--text-dim);
+  letter-spacing: 0.04em;
+  margin-top: 1px;
+}
+
+.steer-dial-container {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-subtle);
+}
+
+.steer-wheel {
+  font-size: 24px;
+  color: var(--accent-emerald);
+  transition: transform 0.1s cubic-bezier(0.16, 1, 0.3, 1);
+  display: inline-block;
+  line-height: 1;
+}
+
+.steer-readout {
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+}
+
+.steer-number {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.steer-label {
+  font-size: 7.5px;
+  font-weight: 700;
+  color: var(--text-dim);
+  letter-spacing: 0.04em;
+  margin-top: 1px;
+}
+
+.radar-mini-canvas {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #090d16;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.15);
+}
+
+.radar-label {
+  font-size: 7.5px;
+  font-weight: 700;
+  color: var(--text-dim);
+  letter-spacing: 0.04em;
+  margin-top: 4px;
+}
+
 .adas-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

@@ -176,9 +176,12 @@
 
     road.draw(carCtx);
 
-    for (const t of simulation.traffic) {
+    const trafficPalette = ["#ef4444", "#f97316", "#e11d48", "#f59e0b", "#be123c"];
+    for (let i = 0; i < simulation.traffic.length; i++) {
+      const t = simulation.traffic[i];
       if (Math.abs(t.y - camY) > h + 200) continue;
-      t.draw(carCtx, readCssVar("--car-traffic", "#f43f5e"));
+      const tColor = trafficPalette[i % trafficPalette.length];
+      t.draw(carCtx, tColor);
     }
 
     // Trails behind surviving cars

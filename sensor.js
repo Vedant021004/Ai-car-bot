@@ -50,47 +50,102 @@ class Sensor {
 
   draw(ctx) {
     if (!this.rays || this.rays.length === 0) return;
+
+    ctx.save();
+
+    // 1. LiDAR Perception Sector Field (soft radar scan cone)
+    if (this.rays.length >= 2) {
+      const origin = this.rays[0][0];
+      const leftTip = this.rays[0][1];
+      const rightTip = this.rays[this.rays.length - 1][1];
+
+      ctx.save();
+      const coneGrad = ctx.createRadialGradient(origin.x, origin.y, 10, origin.x, origin.y, this.rayLength);
+      coneGrad.addColorStop(0, "rgba(56, 189, 248, 0.12)");
+      coneGrad.addColorStop(0.7, "rgba(56, 189, 248, 0.03)");
+      coneGrad.addColorStop(1, "rgba(56, 189, 248, 0)");
+
+      ctx.beginPath();
+      ctx.moveTo(origin.x, origin.y);
+      ctx.lineTo(leftTip.x, leftTip.y);
+      ctx.lineTo(rightTip.x, rightTip.y);
+      ctx.closePath();
+      ctx.fillStyle = coneGrad;
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // 2. Individual Laser Rays with Dynamic Safety Color Transition
     for (let i = 0; i < this.rays.length; i++) {
       let end = this.rays[i][1];
       const reading = this.readings[i];
       if (reading) end = reading;
 
       const start = this.rays[i][0];
-      const hitColor = readCssVar("--sensor-hit", "#ffd76a");
-      const beamColor = readCssVar("--sensor-beam", "#ffd76a");
-      const danger = readCssVar("--sensor-danger", "#ff4d4f");
+      const naturalEnd = this.rays[i][1];
+
+      // Proximity ratio: 0 (far) to 1 (immediate impact)
+      const proximity = reading ? (1 - reading.offset) : 0;
+      let rayColor = "#10b981"; // Safe Green
+      if (reading) {
+        if (proximity > 0.75) rayColor = "#ef4444"; // Critical Red (<25% distance)
+        else if (proximity > 0.45) rayColor = "#f59e0b"; // Caution Amber
+        else rayColor = "#38bdf8"; // Tracked Cyan
+      }
 
       ctx.save();
       ctx.lineCap = "round";
 
-      // Beam from car to (end) — green→yellow gradient by proximity
+      // Active Laser Beam
       ctx.beginPath();
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = beamColor;
-      ctx.globalAlpha = 0.85;
+      ctx.lineWidth = reading ? 2.5 : 1.8;
+      ctx.strokeStyle = rayColor;
+      ctx.globalAlpha = reading ? 0.95 : 0.6;
       ctx.moveTo(start.x, start.y);
       ctx.lineTo(end.x, end.y);
       ctx.stroke();
 
-      // Tail from end to ray's natural end (faded)
-      ctx.beginPath();
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = hitColor;
-      ctx.globalAlpha = 0.18;
-      ctx.moveTo(end.x, end.y);
-      ctx.lineTo(this.rays[i][1].x, this.rays[i][1].y);
-      ctx.stroke();
-
-      // Glow dot at hit point
+      // Laser Beam Extension (Ghosted beyond hit obstacle)
       if (reading) {
         ctx.beginPath();
-        ctx.fillStyle = danger;
-        ctx.globalAlpha = 0.9;
-        ctx.arc(end.x, end.y, 4, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.lineWidth = 1.2;
+        ctx.strokeStyle = "rgba(148, 163, 184, 0.25)";
+        ctx.setLineDash([4, 4]);
+        ctx.moveTo(end.x, end.y);
+        ctx.lineTo(naturalEnd.x, naturalEnd.y);
+        ctx.stroke();
       }
+
+      // Detection Target Crosshair & Proximity Badge
+      if (reading) {
+        // Outer Radar Ping Ring
+        ctx.beginPath();
+        ctx.strokeStyle = rayColor;
+        ctx.lineWidth = 1.5;
+        ctx.globalAlpha = 0.85;
+        ctx.arc(end.x, end.y, 6, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Inner solid core
+        ctx.beginPath();
+        ctx.fillStyle = rayColor;
+        ctx.arc(end.x, end.y, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Micro Distance Tag in Meters (when dangerously close)
+        if (proximity > 0.5) {
+          const distM = Math.max(1, Math.round((1 - reading.offset) * this.rayLength / 5));
+          ctx.font = "bold 9px 'JetBrains Mono', monospace";
+          ctx.fillStyle = rayColor;
+          ctx.textAlign = "center";
+          ctx.fillText(`${distM}m`, end.x, end.y - 9);
+        }
+      }
+
       ctx.restore();
     }
+
+    ctx.restore();
   }
 
   #castRays() {
