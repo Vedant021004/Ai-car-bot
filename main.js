@@ -187,13 +187,19 @@
     );
     simulation.particles.drawTrails(carCtx, nearAlive);
 
-    // AI population (semi-transparent)
+    // AI population (respects ghostMode: 'none' for clean solo champion, 'top3', or 'all')
     if (!app.manualMode && simulation.bestCar) {
-      carCtx.globalAlpha = 0.22;
-      for (const c of simulation.cars) {
-        if (c === simulation.bestCar) continue;
-        if (Math.abs(c.y - simulation.bestCar.y) > h + 200) continue;
-        c.draw(carCtx, readCssVar("--car-ai", "#38bdf8"));
+      const gMode = simulation.ghostMode || "none";
+      if (gMode !== "none" && simulation.executionMode !== "evaluation") {
+        const contenders = gMode === "top3"
+          ? simulation.cars.filter((c) => !c.damaged && c !== simulation.bestCar).slice(0, 2)
+          : simulation.cars.filter((c) => !c.damaged && c !== simulation.bestCar);
+
+        carCtx.globalAlpha = 0.22;
+        for (const c of contenders) {
+          if (Math.abs(c.y - simulation.bestCar.y) > h + 200) continue;
+          c.draw(carCtx, readCssVar("--car-ai", "#38bdf8"));
+        }
       }
       carCtx.globalAlpha = 1;
       simulation.bestCar.draw(

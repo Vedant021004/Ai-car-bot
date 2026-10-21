@@ -20,12 +20,15 @@ class UI {
       // Top Navigation
       badgeMode: $("badge-mode"),
       selectMode: $("select-mode"),
+      selectExecMode: $("select-exec-mode"),
+      selectGhosts: $("select-ghosts"),
       selectScenario: $("select-scenario"),
       badgeStatus: $("badge-status"),
       btnTheme: $("btn-theme"),
       btnHelp: $("btn-help"),
 
       // Live HUD & Telemetry Cards
+      hudPolicy: $("hud-policy"),
       hudFps: $("hud-fps"),
       hudGen: $("hud-gen"),
       hudAlive: $("hud-alive"),
@@ -69,6 +72,7 @@ class UI {
       btnExportBrain: $("btn-export-brain"),
       btnImportBrain: $("btn-import-brain"),
       fileImport: $("file-import"),
+      btnToggleEval: $("btn-toggle-eval"),
       btnExportCSV: $("btn-export-csv"),
 
       // Analytics Chart Controls
@@ -87,11 +91,19 @@ class UI {
 
   #syncControlsFromOptions() {
     const o = this.app.simulation.options;
+    const sim = this.app.simulation;
     const e = this.els;
 
     if (e.selectMode) e.selectMode.value = o.algorithmMode || "evosafe";
     if (e.badgeMode) e.badgeMode.textContent = (o.algorithmMode || "evosafe").toUpperCase();
+    if (e.selectExecMode) e.selectExecMode.value = sim.executionMode || "training";
+    if (e.selectGhosts) e.selectGhosts.value = sim.ghostMode || "none";
     if (e.selectScenario) e.selectScenario.value = o.scenarioId || "highway_cruise";
+    if (e.btnToggleEval) {
+      e.btnToggleEval.textContent = sim.executionMode === "evaluation"
+        ? "🧬 Switch Back to Training Mode"
+        : "🧪 Test Active Brain Now (Solo View)";
+    }
 
     if (e.slPop) {
       e.slPop.value = o.population;
@@ -132,12 +144,28 @@ class UI {
     const e = this.els;
     const sim = this.app.simulation;
 
-    // Algorithm Mode
+    // Algorithm Mode (Baseline vs EvoSafe)
     e.selectMode?.addEventListener("change", (ev) => {
       const mode = ev.target.value;
       sim.setOptions({ algorithmMode: mode });
       if (e.badgeMode) e.badgeMode.textContent = mode.toUpperCase();
-      this.toast(`Mode switched to: ${mode === "evosafe" ? "EvoSafe (Safety-Aware GA)" : "Baseline (Original)"}`);
+      this.toast(`Algorithm: ${mode === "evosafe" ? "EvoSafe (Safety-Aware GA)" : "Baseline (Original)"}`);
+    });
+
+    // Execution Mode (Training Evolution vs Testing Evaluation)
+    e.selectExecMode?.addEventListener("change", (ev) => {
+      const mode = ev.target.value;
+      sim.setExecutionMode(mode);
+      this.#syncControlsFromOptions();
+      this.toast(mode === "evaluation"
+        ? "🧪 Evaluation / Test Mode (Zero Mutation, Exact Brain Solo Run)"
+        : "🧬 Genetic Algorithm Training Mode (Population Evolving)");
+    });
+
+    // Vehicle Ghost Clutter Filter
+    e.selectGhosts?.addEventListener("change", (ev) => {
+      sim.setGhostMode(ev.target.value);
+      this.toast(`View: ${ev.target.options[ev.target.selectedIndex].text}`);
     });
 
     // Scenario Preset
@@ -237,10 +265,21 @@ class UI {
     });
     e.btnManual?.addEventListener("click", () => this.app.toggleManualMode());
 
+    // Toggle Solo Evaluation Mode
+    e.btnToggleEval?.addEventListener("click", () => {
+      const next = sim.executionMode === "training" ? "evaluation" : "training";
+      sim.setExecutionMode(next);
+      if (e.selectExecMode) e.selectExecMode.value = next;
+      this.#syncControlsFromOptions();
+      this.toast(next === "evaluation"
+        ? "🧪 Started Solo Evaluation Test on Current Brain!"
+        : "🧬 Resumed Genetic Algorithm Training!");
+    });
+
     // Brain Persistence
     e.btnSave?.addEventListener("click", () => {
       const ok = sim.saveBestBrain();
-      this.toast(ok ? "Champion brain saved 💾" : "Storage failed");
+      this.toast(ok ? "Champion brain saved to LocalStorage 💾" : "Storage failed");
     });
     e.btnDiscard?.addEventListener("click", () => {
       sim.discardBestBrain();
@@ -249,12 +288,8 @@ class UI {
       this.toast("Champion brain discarded 🗑");
     });
     e.btnExportBrain?.addEventListener("click", () => {
-      if (!sim.bestCar?.brain) {
-        this.toast("No brain to export");
-        return;
-      }
-      Storage.exportBrain(sim.bestCar.brain, `evosafe-brain-gen${sim.generation}.json`);
-      this.toast("Exported brain JSON ⬆");
+      const ok = sim.exportBrainFile("evosafe-champion-brain.json");
+      this.toast(ok ? "Brain file downloaded ⬆ (evosafe-champion-brain.json)" : "No brain available to export");
     });
     e.btnImportBrain?.addEventListener("click", () => e.fileImport?.click());
     e.fileImport?.addEventListener("change", async (ev) => {
@@ -262,9 +297,10 @@ class UI {
       if (!file) return;
       try {
         const data = await Storage.importBrainFromFile(file);
-        sim.loadBrain(data);
+        sim.loadBrain(data, true); // true = auto enter evaluation test mode
+        this.#syncControlsFromOptions();
         this.app.chart.reset();
-        this.toast("Brain imported successfully ⬇");
+        this.toast(`🧪 Testing Imported Brain: ${file.name} (Exact Policy, 0 Mutation)`, 4000);
       } catch (err) {
         this.toast("Import failed: " + err.message);
       }
@@ -451,6 +487,17 @@ class UI {
 
   updateHUD(stats, fps) {
     const e = this.els;
+    const sim = this.app.simulation;
+    if (e.hudPolicy) {
+      if (sim.executionMode === "evaluation") {
+        const name = sim.loadedBrainFilename ? sim.loadedBrainFilename.replace(/^.*[\\\/]/, '') : "Solo Champion";
+        e.hudPolicy.textContent = `🧪 ${name}`;
+      } else if (sim.loadedBrainFilename) {
+        e.hudPolicy.textContent = `🧬 ${sim.loadedBrainFilename.replace(/^.*[\\\/]/, '')}`;
+      } else {
+        e.hudPolicy.textContent = sim.generation > 0 ? "🧬 GA Evolved" : "Expert Seed";
+      }
+    }
     if (e.hudFps) e.hudFps.textContent = fps.toFixed(0);
     if (e.hudGen) e.hudGen.textContent = stats.generation;
     if (e.hudAlive) e.hudAlive.textContent = `${stats.alive}/${stats.population}`;

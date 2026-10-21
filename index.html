@@ -35,6 +35,23 @@
         </select>
       </div>
 
+      <div class="exec-mode-group">
+        <label for="select-exec-mode" class="sr-only">Execution Mode</label>
+        <select id="select-exec-mode" class="nav-select highlight-select" title="Switch between Evolution Training and Single-Brain Testing">
+          <option value="training" selected>🧬 Mode: Training (Evolution)</option>
+          <option value="evaluation">🧪 Mode: Testing (Solo Loaded Brain)</option>
+        </select>
+      </div>
+
+      <div class="ghost-group">
+        <label for="select-ghosts" class="sr-only">Vehicle Visibility</label>
+        <select id="select-ghosts" class="nav-select" title="Control Blue Vehicle Clutter">
+          <option value="none" selected>👑 Solo Champion (Clean View)</option>
+          <option value="top3">👥 Top 3 Contenders</option>
+          <option value="all">🚗 Show All Vehicles</option>
+        </select>
+      </div>
+
       <div class="scenario-group">
         <label for="select-scenario" class="sr-only">Driving Scenario</label>
         <select id="select-scenario" class="nav-select">
@@ -60,6 +77,7 @@
 
       <!-- Live Research Telemetry Bar -->
       <section id="hud" aria-live="polite" aria-label="Live Telemetry">
+        <div class="hud-item"><span class="hud-k">POLICY</span><span id="hud-policy" class="hud-v highlight">Expert Seed</span></div>
         <div class="hud-item"><span class="hud-k">GEN</span><span id="hud-gen" class="hud-v">0</span></div>
         <div class="hud-item"><span class="hud-k">ALIVE</span><span id="hud-alive" class="hud-v">0/0</span></div>
         <div class="hud-item"><span class="hud-k">BEST FIT</span><span id="hud-best" class="hud-v highlight">0</span></div>
@@ -181,15 +199,24 @@
           </label>
         </section>
 
-        <!-- Brain Persistence & Research Data Export -->
-        <section class="panel-card">
-          <h2 class="card-title">Persistence & Research Data</h2>
+        <!-- Brain Testing, Export & Import Suite -->
+        <section class="panel-card test-suite-card">
+          <h2 class="card-title">🧪 Model Validation & Testing</h2>
+          <p class="card-desc">Download the trained brain JSON file or upload any brain JSON to test its exact navigation policy in solo mode (zero mutation noise).</p>
           <div class="btn-grid-row">
-            <button id="btn-save" class="btn-action">💾 Save</button>
-            <button id="btn-discard" class="btn-action danger">🗑 Discard</button>
-            <button id="btn-export-brain" class="btn-action">⬆ Brain JSON</button>
-            <button id="btn-import-brain" class="btn-action">⬇ Import</button>
+            <button id="btn-export-brain" class="btn-action primary" title="Download champion brain JSON file">⬆ Download Brain File</button>
+            <button id="btn-import-brain" class="btn-action accent" title="Upload and test brain JSON">⬇ Import & Test Brain</button>
             <input id="file-import" type="file" accept="application/json,.json" hidden />
+          </div>
+          <button id="btn-toggle-eval" class="btn-action full-width mt-2">🧪 Test Active Brain Now (Solo View)</button>
+        </section>
+
+        <!-- Brain Persistence & Storage Controls -->
+        <section class="panel-card">
+          <h2 class="card-title">Persistence & Telemetry Data</h2>
+          <div class="btn-grid-row">
+            <button id="btn-save" class="btn-action">💾 Save Local</button>
+            <button id="btn-discard" class="btn-action danger">🗑 Discard</button>
           </div>
           <button id="btn-export-csv" class="btn-action full-width primary mt-2">📊 Export Experiment CSV</button>
         </section>

@@ -67,6 +67,11 @@ class Simulation {
       ...options,
     };
 
+    // Operational Modes
+    this.executionMode = options.executionMode || "training"; // 'training' | 'evaluation'
+    this.ghostMode = options.ghostMode || "none"; // 'none' (Solo Champion only - clean view!) | 'top3' | 'all'
+    this.loadedBrainFilename = null;
+
     // Subsystems
     this.prng = new PRNG(this.options.seed);
     this.evolutionEngine = new EvolutionEngine({
@@ -158,6 +163,19 @@ class Simulation {
   }
 
   #spawnPopulation() {
+    if (this.executionMode === "evaluation") {
+      // Evaluation / Testing Mode: Single test car driven purely by the loaded brain, zero mutation
+      const testCar = this.#buildAICar(this.road.getLaneCenter(1), this.startY);
+      const stored = this.bestEverBrain || Storage.get(SIM_KEY_BRAIN);
+      if (stored) {
+        testCar.brain = NeuralNetwork.clone(stored);
+      }
+      this.cars = [testCar];
+      this.bestCar = testCar;
+      this.currentDiversity = 0;
+      return;
+    }
+
     const nextCars = [];
     for (let i = 0; i < this.options.population; i++) {
       const car = this.#buildAICar(this.road.getLaneCenter(1), this.startY);
@@ -172,6 +190,15 @@ class Simulation {
     const stored = this.bestEverBrain || Storage.get(SIM_KEY_BRAIN);
     if (!stored) return;
     this.bestEverBrain = stored;
+
+    if (this.executionMode === "evaluation") {
+      // In evaluation mode, never apply mutation
+      for (const car of this.cars) {
+        car.brain = NeuralNetwork.clone(stored);
+      }
+      this.currentDiversity = 0;
+      return;
+    }
 
     if (this.options.algorithmMode === "baseline") {
       for (let i = 0; i < this.cars.length; i++) {
@@ -424,6 +451,39 @@ class Simulation {
       }
     }
 
+    if (this.executionMode === "evaluation") {
+      // Evaluation / Test Mode: Test the exact imported brain, zero mutation
+      this.generation++;
+      this.bestFitnessThisGen = this.bestCar ? (this.bestCar._computedFitness ?? this.bestCar.fitness) : 0;
+      this.avgFitnessThisGen = this.bestFitnessThisGen;
+      this.lastEvaluationReport = this.safetyEvaluator.extractEvaluationReport(
+        this.cars,
+        this.carMetricsMap
+      );
+
+      this.experimentManager.recordGeneration({
+        generation: this.generation,
+        bestFitness: this.bestFitnessThisGen,
+        avgFitness: this.avgFitnessThisGen,
+        maxDistance: this.lastEvaluationReport.maxDistance,
+        avgDistance: this.lastEvaluationReport.avgDistance,
+        collisionRate: this.lastEvaluationReport.collisionRate,
+        avgSpeed: this.lastEvaluationReport.avgSpeed,
+        avgTTC: this.lastEvaluationReport.avgMinTTC,
+        nearMisses: this.lastEvaluationReport.avgNearMisses,
+        diversity: 0,
+      });
+
+      // Respawn single evaluated vehicle with exact policy
+      const testCar = this.#buildAICar(this.road.getLaneCenter(1), this.startY);
+      testCar.brain = NeuralNetwork.clone(this.bestEverBrain);
+      this.cars = [testCar];
+      this.bestCar = testCar;
+      this.crashedFlags = new WeakSet();
+      this.#initialTraffic();
+      return;
+    }
+
     // Evolution step using configured EvolutionEngine
     const evolutionResult = this.evolutionEngine.evolve(
       this.cars.map((c) => ({
@@ -472,7 +532,24 @@ class Simulation {
   saveBestBrain() {
     const brain = this.bestEverBrain || this.bestCar?.brain;
     if (!brain) return false;
-    return Storage.set(SIM_KEY_BRAIN, brain);
+    const ok = Storage.set(SIM_KEY_BRAIN, brain);
+    if (ok) {
+      Storage.set(SIM_KEY_BEST_FITNESS, this.allTimeBestFitness);
+      Storage.set(SIM_KEY_BRAIN_VERSION, CURRENT_BRAIN_VERSION);
+    }
+    return ok;
+  }
+
+  exportBrainFile(filename) {
+    const brain = this.bestEverBrain || this.bestCar?.brain;
+    if (!brain) return false;
+    const fname = filename || `evosafe-brain-gen${this.generation}.json`;
+    return Storage.exportBrain(brain, fname, {
+      rayCount: this.options.rayCount,
+      rayLength: this.options.rayLength,
+      generation: this.generation,
+      bestFitness: this.allTimeBestFitness,
+    });
   }
 
   discardBestBrain() {
@@ -481,27 +558,50 @@ class Simulation {
     Storage.remove(SIM_KEY_GENERATION);
     this.allTimeBestFitness = 0;
     this.generation = 0;
-    this.bestEverBrain = null;
+    this.bestEverBrain = NeuralNetwork.clone(DEFAULT_CHAMPION_BRAIN);
+    this.loadedBrainFilename = null;
     this.adaptiveMutation = this.options.mutationAmount;
     this.plateauStreak = 0;
     this.currentDiversity = 0;
   }
 
-  loadBrain(brainData) {
-    const requiredInputs = this.options.rayCount;
-    const firstLevel = brainData?.levels?.[0];
-    const brainInputs =
-      firstLevel?.weights?.length ?? firstLevel?.inputs?.length;
-    if (brainInputs !== requiredInputs) {
-      throw new Error(
-        `Brain has ${brainInputs} inputs, but the current sensor uses ${requiredInputs} rays. ` +
-          `Match the slider to the brain (or change rays to ${brainInputs}) before importing.`
-      );
+  loadBrain(brainData, autoEvaluate = true) {
+    const rawLevels = brainData?.levels || (Array.isArray(brainData) ? brainData : null);
+    if (!rawLevels || rawLevels.length === 0) {
+      throw new Error("Invalid brain format: missing levels array");
     }
-    this.bestEverBrain = brainData;
-    Storage.set(SIM_KEY_BRAIN, brainData);
+    const brainInputs = rawLevels[0]?.weights?.length ?? rawLevels[0]?.inputs?.length;
+    // Auto-align sensor rays to match brain inputs if they differ
+    if (brainInputs && brainInputs !== this.options.rayCount) {
+      this.options.rayCount = brainInputs;
+    }
+
+    this.bestEverBrain = { levels: rawLevels };
+    this.loadedBrainFilename = brainData.filename || "imported-brain.json";
+    Storage.set(SIM_KEY_BRAIN, this.bestEverBrain);
     Storage.set(SIM_KEY_BRAIN_VERSION, CURRENT_BRAIN_VERSION);
+
+    if (autoEvaluate) {
+      this.executionMode = "evaluation"; // Switch to test mode immediately
+      this.ghostMode = "none"; // Clean single-car view
+    }
     this.reset();
+  }
+
+  setExecutionMode(mode) {
+    if (mode === "training" || mode === "evaluation") {
+      this.executionMode = mode;
+      if (mode === "evaluation") {
+        this.ghostMode = "none";
+      }
+      this.reset();
+    }
+  }
+
+  setGhostMode(mode) {
+    if (mode === "none" || mode === "top3" || mode === "all") {
+      this.ghostMode = mode;
+    }
   }
 
   reset() {
@@ -513,7 +613,8 @@ class Simulation {
       algorithm: this.options.algorithmMode,
       scenario: this.options.scenarioId,
       seed: this.options.seed,
-      population: this.options.population,
+      population: this.cars.length,
+      notes: this.executionMode === "evaluation" ? `Evaluation: ${this.loadedBrainFilename || "Champion"}` : "Training",
     });
   }
 
@@ -528,9 +629,12 @@ class Simulation {
       allTimeBest: this.allTimeBestFitness,
       distance: this.bestCar ? this.bestCar.distanceTraveled : 0,
       speed: this.bestCar ? this.bestCar.speed : 0,
-      mutation: this.adaptiveMutation,
+      mutation: this.executionMode === "evaluation" ? 0 : this.adaptiveMutation,
       trafficCount: this.traffic.length,
       algorithmMode: this.options.algorithmMode,
+      executionMode: this.executionMode,
+      ghostMode: this.ghostMode,
+      loadedBrainFilename: this.loadedBrainFilename,
       diversity: this.currentDiversity,
       collisionRate: rep ? rep.collisionRate : (this.cars.length > 0 ? (this.cars.length - alive) / this.cars.length : 0),
       avgTTC: rep ? rep.avgMinTTC : 0,

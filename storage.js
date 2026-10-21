@@ -39,8 +39,24 @@ const Storage = {
     }
   },
 
-  exportBrain(brain, filename = "best-brain.json") {
-    const blob = new Blob([JSON.stringify(brain, null, 2)], {
+  exportBrain(brain, filename = "evosafe-champion-brain.json", metadata = {}) {
+    const rawLevels = brain.levels || (Array.isArray(brain) ? brain : null);
+    if (!rawLevels) {
+      throw new Error("Cannot export brain: missing levels structure");
+    }
+
+    const payload = {
+      format: "evosafe-brain",
+      version: 2,
+      exportedAt: new Date().toISOString(),
+      rayCount: metadata.rayCount || (rawLevels[0]?.weights?.length ?? rawLevels[0]?.inputs?.length ?? 5),
+      rayLength: metadata.rayLength || 180,
+      generation: metadata.generation ?? 0,
+      bestFitness: metadata.bestFitness ?? 0,
+      levels: rawLevels,
+    };
+
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {
       type: "application/json",
     });
     const url = URL.createObjectURL(blob);
@@ -51,6 +67,7 @@ const Storage = {
     a.click();
     document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 1000);
+    return true;
   },
 
   importBrainFromFile(file) {
@@ -59,13 +76,33 @@ const Storage = {
       reader.onload = () => {
         try {
           const data = JSON.parse(reader.result);
-          if (!data.levels || !Array.isArray(data.levels)) {
-            reject(new Error("Invalid brain file: missing levels"));
+          const levels = data.levels || (Array.isArray(data) ? data : null);
+          if (!levels || !Array.isArray(levels) || levels.length === 0) {
+            reject(new Error("Invalid brain JSON: missing levels array"));
             return;
           }
-          resolve(data);
+
+          // Validate level structure
+          for (const lvl of levels) {
+            if (!lvl.weights || !lvl.biases) {
+              reject(new Error("Invalid brain JSON: level missing weights or biases"));
+              return;
+            }
+          }
+
+          const parsed = {
+            format: data.format || "evosafe-brain",
+            version: data.version || 2,
+            rayCount: data.rayCount || levels[0].weights.length || 5,
+            rayLength: data.rayLength || 180,
+            generation: data.generation || 0,
+            bestFitness: data.bestFitness || 0,
+            levels,
+            filename: file.name,
+          };
+          resolve(parsed);
         } catch (e) {
-          reject(e);
+          reject(new Error("Failed to parse brain JSON: " + e.message));
         }
       };
       reader.onerror = () => reject(reader.error);

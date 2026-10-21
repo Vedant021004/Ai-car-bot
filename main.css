@@ -199,6 +199,13 @@ html, body {
   border-color: var(--accent-cyan);
 }
 
+.nav-select.highlight-select {
+  border-color: var(--accent-emerald);
+  background: var(--bg-surface);
+  font-weight: 600;
+  color: var(--accent-emerald);
+}
+
 .nav-actions {
   display: flex;
   align-items: center;
@@ -458,6 +465,22 @@ html, body {
   margin: 0;
   padding-bottom: 8px;
   border-bottom: 1px solid var(--border-subtle);
+}
+
+.panel-card.test-suite-card {
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  background: linear-gradient(180deg, rgba(56, 189, 248, 0.04) 0%, var(--bg-card) 100%);
+}
+
+.panel-card.test-suite-card .card-title {
+  color: var(--accent-cyan);
+}
+
+.card-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.45;
+  margin: 0;
 }
 
 .param-slider, .param-select {
