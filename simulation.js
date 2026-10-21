@@ -172,16 +172,43 @@ class Simulation {
   }
 
   #spawnPopulation() {
-    if (this.executionMode === "evaluation") {
-      // Evaluation / Testing Mode: Single test car driven purely by the loaded brain, zero mutation
+    if (this.executionMode === "benchmark") {
+      // Frozen single-car benchmark: pure evaluation without learning
       const testCar = this.#buildAICar(this.road.getLaneCenter(1), this.startY);
       const stored = this.bestEverBrain || Storage.get(SIM_KEY_BRAIN);
-      if (stored) {
-        testCar.brain = NeuralNetwork.clone(stored);
-      }
+      if (stored) testCar.brain = NeuralNetwork.clone(stored);
       this.cars = [testCar];
       this.bestCar = testCar;
       this.currentDiversity = 0;
+      return;
+    }
+
+    if (this.executionMode === "evaluation") {
+      // Testing & Adaptive Learning Mode:
+      // Spawns a high-efficiency adaptive test cohort (8 cars) where:
+      // - Car 0: Exact active/loaded champion brain
+      // - Cars 1..7: Focused adaptive exploration variants
+      // Note: On canvas, ONLY the leading car is rendered (ghostMode='none'),
+      // giving the user a 100% clean, single-car test experience with active learning!
+      const cohortSize = this.options.testPopulation || 8;
+      const cars = [];
+      const stored = this.bestEverBrain || Storage.get(SIM_KEY_BRAIN);
+      if (stored) this.bestEverBrain = stored;
+
+      for (let i = 0; i < cohortSize; i++) {
+        const car = this.#buildAICar(this.road.getLaneCenter(1), this.startY);
+        if (stored) {
+          car.brain = NeuralNetwork.clone(stored);
+          if (i > 0) {
+            // Adaptive fine-tuning mutation focused on evasive maneuvers & safety
+            this.evolutionEngine.mutate(car.brain, 0.15, 0.22);
+          }
+        }
+        cars.push(car);
+      }
+      this.cars = cars;
+      this.bestCar = cars[0];
+      this.currentDiversity = this.evolutionEngine.calculateDiversity(cars.map((c) => c.brain));
       return;
     }
 
@@ -349,6 +376,28 @@ class Simulation {
       if (!wasDamaged && car.damaged && !this.crashedFlags.has(car)) {
         this.crashedFlags.add(car);
         this.particles.burst(car.x, car.y, 14, "#ff7676");
+
+        // Record failure diagnostics for test-time adaptive learning & policy repair
+        if (car.sensor && car.sensor.readings) {
+          let maxProximity = 0;
+          let crashRayIdx = 2; // default center
+          for (let rIdx = 0; rIdx < car.sensor.readings.length; rIdx++) {
+            const r = car.sensor.readings[rIdx];
+            if (r) {
+              const prox = 1 - r.offset;
+              if (prox > maxProximity) {
+                maxProximity = prox;
+                crashRayIdx = rIdx;
+              }
+            }
+          }
+          car._failureContext = {
+            crashRayIdx,
+            maxProximity,
+            speed: car.speed,
+            lateralDev: car.x - this.road.getLaneCenter(1),
+          };
+        }
       }
     }
 
@@ -460,8 +509,8 @@ class Simulation {
       }
     }
 
-    if (this.executionMode === "evaluation") {
-      // Evaluation / Test Mode: Test the exact imported brain, zero mutation
+    if (this.executionMode === "benchmark") {
+      // Pure frozen evaluation (zero mutation / static policy)
       this.generation++;
       this.bestFitnessThisGen = this.bestCar ? (this.bestCar._computedFitness ?? this.bestCar.fitness) : 0;
       this.avgFitnessThisGen = this.bestFitnessThisGen;
@@ -483,11 +532,84 @@ class Simulation {
         diversity: 0,
       });
 
-      // Respawn single evaluated vehicle with exact policy
       const testCar = this.#buildAICar(this.road.getLaneCenter(1), this.startY);
       testCar.brain = NeuralNetwork.clone(this.bestEverBrain);
       this.cars = [testCar];
       this.bestCar = testCar;
+      this.crashedFlags = new WeakSet();
+      this.#initialTraffic();
+      return;
+    }
+
+    if (this.executionMode === "evaluation") {
+      // Testing & Adaptive Learning Mode:
+      // Evaluates cohort variants, adopts record-breaking improvements,
+      // and repairs failure policies so the vehicle actively masters the course!
+      this.generation++;
+
+      for (const car of this.cars) {
+        const m = this.carMetricsMap.get(car);
+        car._evalFitness = this.safetyEvaluator.computeSafetyFitness(car, m);
+      }
+
+      let bestInCohort = this.cars[0];
+      for (const c of this.cars) {
+        if (c._evalFitness > bestInCohort._evalFitness) bestInCohort = c;
+      }
+
+      this.bestFitnessThisGen = bestInCohort._evalFitness;
+      this.avgFitnessThisGen = this.cars.reduce((acc, c) => acc + c._evalFitness, 0) / this.cars.length;
+      this.lastEvaluationReport = this.safetyEvaluator.extractEvaluationReport(
+        this.cars,
+        this.carMetricsMap
+      );
+
+      this.experimentManager.recordGeneration({
+        generation: this.generation,
+        bestFitness: this.bestFitnessThisGen,
+        avgFitness: this.avgFitnessThisGen,
+        maxDistance: this.lastEvaluationReport.maxDistance,
+        avgDistance: this.lastEvaluationReport.avgDistance,
+        collisionRate: this.lastEvaluationReport.collisionRate,
+        avgSpeed: this.lastEvaluationReport.avgSpeed,
+        avgTTC: this.lastEvaluationReport.avgMinTTC,
+        nearMisses: this.lastEvaluationReport.avgNearMisses,
+        diversity: this.currentDiversity,
+      });
+
+      // Adopt record-breaking variants in testing mode
+      if (bestInCohort._evalFitness > this.allTimeBestFitness || bestInCohort.distanceTraveled > (this._lastBestEvalDist || 0)) {
+        this.allTimeBestFitness = Math.max(this.allTimeBestFitness, bestInCohort._evalFitness);
+        this.bestEverBrain = NeuralNetwork.clone(bestInCohort.brain);
+        this._lastBestEvalDist = bestInCohort.distanceTraveled;
+        Storage.set(SIM_KEY_BRAIN, this.bestEverBrain);
+        Storage.set(SIM_KEY_BEST_FITNESS, this.allTimeBestFitness);
+      }
+
+      // If best car experienced a crash, apply targeted failure policy repair
+      let seedBrain = this.bestEverBrain || bestInCohort.brain;
+      if (bestInCohort._failureContext) {
+        seedBrain = Simulation.repairFailurePolicy(seedBrain, bestInCohort._failureContext);
+        this.bestEverBrain = NeuralNetwork.clone(seedBrain);
+        Storage.set(SIM_KEY_BRAIN, this.bestEverBrain);
+      }
+
+      // Re-spawn the adaptive test cohort around the repaired / learned policy
+      const cohortSize = this.options.testPopulation || 8;
+      const nextCars = [];
+      for (let i = 0; i < cohortSize; i++) {
+        const car = this.#buildAICar(this.road.getLaneCenter(1), this.startY);
+        car.brain = NeuralNetwork.clone(seedBrain);
+        if (i > 0) {
+          // Explore fine-tuned alternative avoidance corridors
+          this.evolutionEngine.mutate(car.brain, 0.12, 0.18);
+        }
+        nextCars.push(car);
+      }
+
+      this.cars = nextCars;
+      this.bestCar = nextCars[0];
+      this.currentDiversity = this.evolutionEngine.calculateDiversity(nextCars.map((c) => c.brain));
       this.crashedFlags = new WeakSet();
       this.#initialTraffic();
       return;
@@ -598,9 +720,9 @@ class Simulation {
   }
 
   setExecutionMode(mode) {
-    if (mode === "training" || mode === "evaluation") {
+    if (mode === "training" || mode === "evaluation" || mode === "benchmark") {
       this.executionMode = mode;
-      if (mode === "evaluation") {
+      if (mode === "evaluation" || mode === "benchmark") {
         this.ghostMode = "none";
       }
       this.reset();
@@ -748,5 +870,47 @@ class Simulation {
       noSafetyFitness: trial({ algorithmMode: "baseline" }),
       baseline: trial({ algorithmMode: "baseline" }),
     };
+  }
+
+  /**
+   * Adaptive Policy Repair: Analyzes failure telemetry right before collision
+   * and adjusts neural weights and biases to steer away and brake.
+   */
+  static repairFailurePolicy(brain, failureContext) {
+    if (!brain || !brain.levels) return brain;
+    const repaired = NeuralNetwork.clone(brain);
+    const lvl0 = repaired.levels[0];
+    const lvlOut = repaired.levels[repaired.levels.length - 1];
+    if (!lvl0 || !lvlOut) return repaired;
+
+    const crashRayIdx = failureContext?.crashRayIdx ?? 2;
+
+    // Outputs: 0 = up (accel), 1 = left, 2 = right, 3 = down (brake)
+    // In Level.feedForward, output fires if sum > bias. Lower bias = fires more easily!
+    if (crashRayIdx === 0 || crashRayIdx === 1) {
+      // Obstacle was on the LEFT -> steer RIGHT (output 2), brake (output 3), avoid steering left
+      lvlOut.biases[2] -= 0.22; // trigger right turn earlier
+      lvlOut.biases[1] += 0.25; // inhibit left turn into hazard
+      lvlOut.biases[3] -= 0.18; // brake earlier
+      for (let j = 0; j < lvl0.weights[crashRayIdx].length; j++) {
+        lvl0.weights[crashRayIdx][j] += (Math.random() * 0.3 + 0.15);
+      }
+    } else if (crashRayIdx === 3 || crashRayIdx === 4) {
+      // Obstacle was on the RIGHT -> steer LEFT (output 1), brake (output 3), avoid steering right
+      lvlOut.biases[1] -= 0.22; // trigger left turn earlier
+      lvlOut.biases[2] += 0.25; // inhibit right turn into hazard
+      lvlOut.biases[3] -= 0.18; // brake earlier
+      for (let j = 0; j < lvl0.weights[crashRayIdx].length; j++) {
+        lvl0.weights[crashRayIdx][j] += (Math.random() * 0.3 + 0.15);
+      }
+    } else {
+      // Center hazard (head-on / rear-end) -> immediate BRAKE + evasive swerve
+      lvlOut.biases[3] -= 0.35; // aggressive brake trigger
+      const escape = Math.random() < 0.5 ? 1 : 2;
+      lvlOut.biases[escape] -= 0.25;
+      lvlOut.biases[escape === 1 ? 2 : 1] += 0.15;
+    }
+
+    return repaired;
   }
 }

@@ -185,14 +185,18 @@ class UI {
       this.toast(`Algorithm: ${mode === "evosafe" ? "EvoSafe (Safety-Aware GA)" : "Baseline (Original)"}`);
     });
 
-    // Execution Mode (Training Evolution vs Testing Evaluation)
+    // Execution Mode (Training Evolution vs Testing Adaptive Learning vs Benchmark)
     e.selectExecMode?.addEventListener("change", (ev) => {
       const mode = ev.target.value;
       sim.setExecutionMode(mode);
       this.#syncControlsFromOptions();
-      this.toast(mode === "evaluation"
-        ? "🧪 Evaluation / Test Mode (Zero Mutation, Exact Brain Solo Run)"
-        : "🧬 Genetic Algorithm Training Mode (Population Evolving)");
+      if (mode === "evaluation") {
+        this.toast("🧪 Testing & Adaptive Learning Mode: Solo clean view with active failure policy repair!", 3500);
+      } else if (mode === "benchmark") {
+        this.toast("🔬 Frozen Benchmark Mode: Static single car, zero mutation evaluation.", 3000);
+      } else {
+        this.toast("🧬 Genetic Algorithm Training Mode: Full multi-car population evolving.", 3000);
+      }
     });
 
     // Vehicle Ghost Clutter Filter
@@ -677,8 +681,10 @@ class UI {
     const sim = this.app.simulation;
     if (e.hudPolicy) {
       if (sim.executionMode === "evaluation") {
-        const name = sim.loadedBrainFilename ? sim.loadedBrainFilename.replace(/^.*[\\\/]/, '') : "Solo Champion";
-        e.hudPolicy.textContent = `🧪 ${name}`;
+        const name = sim.loadedBrainFilename ? sim.loadedBrainFilename.replace(/^.*[\\\/]/, '') : "Adaptive Learner";
+        e.hudPolicy.textContent = `🧪 ${name} · Gen ${sim.generation}`;
+      } else if (sim.executionMode === "benchmark") {
+        e.hudPolicy.textContent = `🔬 Benchmark (Frozen)`;
       } else if (sim.loadedBrainFilename) {
         e.hudPolicy.textContent = `🧬 ${sim.loadedBrainFilename.replace(/^.*[\\\/]/, '')}`;
       } else {
